@@ -1,4 +1,4 @@
-= &#x1F64B; The Little Man Stack Machine
+# &#x1F64B; The Little Man Stack Machine
 
 The Little Man Stack Machine is a simple, theoretical computer model that extends the excellent 
 [https://en.wikipedia.org/wiki/Little_man_computer](Little Man Computer) teaching model and that can be used to 
