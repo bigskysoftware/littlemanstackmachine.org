@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://the.missing.style/">
+    <title>The Little Man Stack Machine</title>
+</head>
+<body>
+<main>
+    <h1 class="massivetext">&#x1F64B; The Little Man Stack Machine</h1>
+    <nav>
+        <p class="tool-bar">
+            <a href="index.html">Intro</a>
+            <a href="assembly.html">Assembly & Execution</a>
+            <a href="functions.html">Functions</a>
+            <a href="firth.html">Firth</a>
+            <a href="emulator.html">Emulator</a>
+            <a href="https://github.com/bigskysoftware/littlemanstackmachine.org">Github</a>
+        </p>
+    </nav>
+
+    <h1>The LMSM Instruction Cycle</h1>
+    <p>
+        As a <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von Neumann</a> machine, the
+        LMSM follows a simple <a href="https://en.wikipedia.org/wiki/Instruction_cycle">Instruction Cycle</a>,
+        identical to the instruction cycle of the LMC:
+    </p>
+
+    <ol>
+        <li>
+            The value in the memory location pointed to by the <code>program_counter</code> register is retrieved
+            from memory and placed in the <code>current_instruction</code> register.
+        </li>
+        <li>
+            The program counter is incremented by one.
+        </li>
+        <li>
+            The instruction is executed.
+        </li>
+        <li>
+            The cycle is repeated.
+        </li>
+    </ol>
+
+    <p>
+        This simple loop is the basis for computation on the LMSM and, in a broad sense, of many of the computers
+        we use today.
+    </p>
+
+    <p>
+        Instructions, when executed, update the state of the computer in some manner: moving a value between memory
+        locations and registers, updating registers, outputing data, etc.
+    </p>
+
+    <h2>Example Execution</h2>
+
+    <p>
+        In order to understand how execution works, let's step through a cycle of execution in detail. Consider an
+        LMSM whose <code>program_counter</code> is set to 0 and who has the following numeric values
+        in the first three slots in memory:
+    </p>
+
+    <img src="img/execution1.png">
+
+    <h3>Cycle 1</h3>
+
+    <p>
+        Execution would begin by retrieving instruction from memory slot 0, which is where the
+        <code>program_counter</code>
+        initially points to and placing it in the <code>current_instruction</code> register:
+    </p>
+
+    <img src="img/execution2.png">
+
+    <p>
+        Next, the <code>program_counter</code> value is incremented from 0 to 1, so that it points to the next
+        instruction
+        in memory:
+    </p>
+
+    <img src="img/execution3.png">
+
+    <p>
+        Next, the instruction is executed. In this case, the instruction is 401, which tells the
+        LMSM to place the value 1 into the <code>accumulator</code> register.
+        (We will go over exactly what each instruction means in the next section.)
+    </p>
+
+    <img src="img/execution4.png">
+
+    <p>
+        This completes a single instruction cycle for the LMSM. The LMSM then starts again from the beginning of
+        the cycle and repeats the same logic.
+    </p>
+
+    <h3>Cycle 2</h3>
+
+    <p>
+        This time the <code>program_counter</code> is pointing to slot 1, so the instruction 902 is loaded into the
+        <code>current_instruction</code> register and the <code>program_counter</code> is incremented to the value 2.
+        The 902 instruction tells the LMSM to print the current value of the <code>accumulator</code> register to
+        output.
+    </p>
+
+    <p>
+        Once again, the cycle repeats.
+    </p>
+
+    <h3>Cycle 3</h3>
+
+    <p>
+        Now the <code>program_counter</code> is pointing to slot 2, so the instruction 000 is loaded into the
+        <code>current_instruction</code> register and the <code>program_counter</code> is incremented to the value 3.
+    </p>
+
+    <p>
+        The 000 instruction tells the LMSM to halt, and so it stops executing.
+    </p>
+
+    <h3>A Completed Program!</h3>
+
+    <p>
+        The program above prints the number 1 to output. It might not look like much, but this is the "Hello World" of
+        LMSM, and it demonstrates the basic operation mechanics of the system.
+    </p>
+
+    <h1>LMSM Instructions</h1>
+
+    <p>
+        In the program above we executed LMSM machine instructions to achieve something. In this section we will
+        go over all the instructions available and what they do.
+    </p>
+
+    <p>
+        The first thing to bear in mind is that LMSM instructions are stored in LMSM memory as "regular" data. There is
+        no distinction between "instructions" and "data". Just like any other piece of data in the LMSM, instructions
+        are numeric values between -999 and 999.
+    </p>
+
+    <p>
+        Let's look at the available instructions.
+    </p>
+
+    <h2>LMC Instructions</h2>
+
+    <p>
+        The LMSM supports the following instructions, which are all taken, unchanged, from the LCM:
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Machine Code</th>
+            <th>Assembly Instruction</th>
+            <th>Description</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                1XX
+            </td>
+            <td>
+                ADD &lt;XX&gt;
+            </td>
+            <td>
+                Adds the value located in memory at position XX to the value of the accumulator.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                2XX
+            </td>
+            <td>
+                SUB &lt;XX&gt;
+            </td>
+            <td>
+                Subtracts the value located in memory at position XX to the value of the accumulator.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                3XX
+            </td>
+            <td>
+                STA &lt;XX&gt;
+            </td>
+            <td>
+                Stores the value of the accumulator to the memory location at position XX
+            </td>
+        </tr>
+        <tr>
+            <td>
+                5XX
+            </td>
+            <td>
+                LDA &lt;XX&gt;
+            </td>
+            <td>
+                Loads the value of the memory location at position XX into the accumulator.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                6XX
+            </td>
+            <td>
+                BRA &lt;XX&gt;
+            </td>
+            <td>
+                Unconditionally sets the program counter to the given value
+            </td>
+        </tr>
+        <tr>
+            <td>
+                7XX
+            </td>
+            <td>
+                BRZ &lt;XX&gt;
+            </td>
+            <td>
+                Sets the program counter to the given value if and only if the value of the accumulator is 0
+            </td>
+        </tr>
+        <tr>
+            <td>
+                8XX
+            </td>
+            <td>
+                BRP &lt;XX&gt;
+            </td>
+            <td>
+                Sets the program counter to the given value if and only if the value of the accumulator is 0 or
+                a number greater than 0
+            </td>
+        </tr>
+        <tr>
+            <td>
+                901
+            </td>
+            <td>
+                INP
+            </td>
+            <td>
+                Gets a numeric value from the user and stores it in the accumulator
+            </td>
+        </tr>
+        <tr>
+            <td>
+                902
+            </td>
+            <td>
+                OUT
+            </td>
+            <td>
+                Prints the current value of the accumulator to output
+            </td>
+        </tr>
+        <tr>
+            <td>
+                000
+            </td>
+            <td>
+                HLT
+            </td>
+            <td>
+                Halts the system, ending the execution loop
+            </td>
+        </tr>
+        <tr>
+            <td>
+            </td>
+            <td>
+                DAT &lt;XXX&gt;
+            </td>
+            <td>
+                An assembler-only instruction that allows a program to insert a raw value into a given memory location
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p>
+        Because the LMSM supports all these instructions, a LMC program will execute on the LMSM. The LMSM is
+        <em>backwards compatible</em> with the LMC, which is a very common situation in CPU evolution: as CPUs
+        developed, old code often continued to work on the new CPUs.
+    </p>
+
+    <h2>The "Load Immediate" Instruction</h2>
+
+    <p>
+        In addition to these standard LMC instructions, the LMSM also supports an "immediate" instruction to load
+        a value directly into the accumulator. We saw this instruction in our simple "Hello World" program:
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Machine Code</th>
+            <th>Assembly Instruction</th>
+            <th>Description</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                4XX
+            </td>
+            <td>
+                LDI &lt;XX&gt;
+            </td>
+            <td>
+                Loads the numeric value XX directly into the accumulator.
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Stack Instructions</h2>
+
+    <p>
+        The most significant addition to the LMC model in the LMSM is the addition of several instructions for
+        working with the new stacks available in upper memory:
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Machine Code</th>
+            <th>Assembly Instruction</th>
+            <th>Description</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                920
+            </td>
+            <td>
+                SPUSH
+            </td>
+            <td>
+                "Pushes" the value of the <code>accumulator</code> onto the top of the value stack, by
+                <em>decrementing</em> the <code>stack_pointer</code> register by 1 and then copying the
+                value from the <code>accumulator</code> to the memory location that the <code>stack_pointer</code>
+                points to.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                921
+            </td>
+            <td>
+                SPOP
+            </td>
+            <td>
+                "Pops" the value off top of the value stack into the <code>accumulator</code> by copying
+                the value in the memory location that the <code>stack_pointer</code> points to the
+                <code>accumulator</code>
+                and then <em>incrementing</em> the <code>stack_pointer</code>.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                922
+            </td>
+            <td>
+                SDUP
+            </td>
+            <td>
+                "Duplicates" the top of the value stack by decrementing the value of the <code>stack_pointer</code> and
+                then copying the value directly above the memory location that the <code>stack_pointer</code> points
+                to to the memory location that the <code>stack_pointer</code> points to.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                923
+            </td>
+            <td>
+                SDROP
+            </td>
+            <td>
+                "Drops" the top of the value stack by incrementing the value of the <code>stack_pointer</code>.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                924
+            </td>
+            <td>
+                SSWAP
+            </td>
+            <td>
+                "Swaps" the top of the value stack by swapping the value in the memory location directly above the
+                memory location that the <code>stack_pointer</code> points to with the value in the memory location
+                that the <code>stack_pointer</code> points to.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                930
+            </td>
+            <td>
+                SADD
+            </td>
+            <td>
+                Removes the top two values on the stack, adds them together and places the result onto the stack.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                931
+            </td>
+            <td>
+                SSUB
+            </td>
+            <td>
+                Removes the top two values on the stack, subtracts them and places the result onto the stack.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                932
+            </td>
+            <td>
+                SMUL
+            </td>
+            <td>
+                Removes the top two values on the stack, multiplies them and places the result onto the stack.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                933
+            </td>
+            <td>
+                SDIV
+            </td>
+            <td>
+                Removes the top two values on the stack, divides them and places the result onto the stack.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                934
+            </td>
+            <td>
+                SMAX
+            </td>
+            <td>
+                Removes the top two values on the stack, and places the maximum of the two values back on the stack.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                934
+            </td>
+            <td>
+                SMIN
+            </td>
+            <td>
+                Removes the top two values on the stack, and places the minimum of the two values back on the stack.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                910
+            </td>
+            <td>
+                JAL
+            </td>
+            <td>
+                The "Jump And Link" instruction updates the program counter to the value that the stack pointer
+                currently points to and then increases the value of the return address register by one and saves the
+                address of the next instruction <em>after</em> the "Jump And Link".
+            </td>
+        </tr>
+        <tr>
+            <td>
+                911
+            </td>
+            <td>
+                RET
+            </td>
+            <td>
+                The "Return" instruction updates the program counter to the value that the return address pointer
+                currently points to and then decreases the value of the return address register by one.
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Assembly Instruction Examples</h2>
+
+    <p>
+        Let's look at the mechanics for a few instructions on the LMSM to get a feel for how things work.
+    </p>
+
+    <h3>The <code>ADD</code> Instruction</h3>
+
+    <p>
+        The <code>ADD</code> assembly instruction takes a two digit argument and tells the LMSM to add the value
+        at that memory location to the accumulator.
+    </p>
+
+    <p>
+        Consider the assembly <code>ADD 10</code>. This would assemble down to the machine instruction <code>110</code>.
+    </p>
+
+    <p>
+        If this instruction were loaded into memory and ready to execute, the LSMS would look like this:
+    </p>
+
+    <img src="img/add1.png">
+
+    <p>
+        Note that the program counter is pointing to the instruction after the <code>ADD</code> machine instruction,
+        and the <code>ADD</code> machine instruction has been loaded into current instruction register.  The LMSM
+        is ready to execute the instruction and continue.
+    </p>
+
+    <p>
+        Note also that the value stored in memory location <code>10</code> is the value <code>20</code>, and that
+        the accumulator currently has the value <code>22</code>.
+    </p>
+
+
+    <img src="img/add2.png">
+
+    <p>
+        Once the instruction has executed the value <code>20</code> has been added to the accumulator, giving the
+        value <code>42</code>.
+    </p>
+
+    <p>
+        The LMSM then moves on to the next instruction.
+    </p>
+
+    <h3>The <code>BRZ</code> Instruction</h3>
+
+    <p>
+        The <code>BRZ</code> assembly instruction takes a two digit argument and tells the LMSM to "jump" to that
+        memory location if the accumulator is zero.  This is an example of assembly control flow, allowing the
+        LMSM to conditionally execute code depending on the state of data.
+    </p>
+
+    <p>
+        Consider the assembly <code>BRZ 10</code>. This would assemble down to the machine instruction <code>710</code>.
+    </p>
+
+    <p>
+        If this instruction were loaded into memory and ready to execute, the LSMS would look like this:
+    </p>
+
+    <img src="img/brz1.png">
+
+    <p>
+        Note that the program counter is pointing to the instruction after the <code>BRZ</code> machine instruction,
+        and the <code>BRZ</code> machine instruction has been loaded into current instruction register.
+    </p>
+
+    <p>
+        The accumulator currently has the value <code>0</code>, so the condition to make the jump is true.
+    </p>
+
+
+    <img src="img/brz2.png">
+
+    <p>
+        Once the instruction has executed, because the accumulator had the value 0, the program counter has been updated
+        to point to the instruction at memory position <code>10</code>, which has the value <code>000</code>.
+    </p>
+
+    <p>
+        The value <code>000</code> tells the LMSM to halt, so this <code>BRZ</code> instruction is effectively telling
+        the LSMS: "Stop executing if the accumulator is zero."
+    </p>
+
+    <h3>The <code>SPUSH</code> Instruction</h3>
+
+    <p>
+        The next instruction we are going to look at is the <code>SPUSH</code> instruction, which takes the current
+        value of the accumulator and "pushes" it onto the top of the value stack.
+    </p>
+
+    <p>
+        Note that the stack pointer starts with the value <code>200</code>, indicating that there are no values
+        on the stack, and that the accumulator starts with the value 22.  This latter value will be the value
+        "pushed" onto the stack.
+    </p>
+
+    <img src="img/spush1.png">
+
+    <p>
+        The first step in the push operation is to decrement the stack pointer register by <code>1</code> to
+        <code>199</code>.  This will be the memory location that the LMSM stores the value into.
+    </p>
+
+    <img src="img/spush2.png">
+
+    <p>
+        The second step in the push operation is to move the value of the accumulator into the memory location that
+        the stack pointer points to.
+    </p>
+
+    <img src="img/spush3.png">
+
+    <p>
+        At this point, the LMSM is done: the value 22 has been "pushed" onto the top of the value stack.  If another
+        <code>SPUSH</code> were to occur, the new value would be located in the next slot down from this, effectively
+        "growing" the value stack downwards.
+    </p>
+
+    <h3>The <code>SADD</code> Instruction</h3>
+
+    <p>
+        The final instruction we are going to look at is the <code>SADD</code> instruction, which adds the top two
+        values on the value stack together and replaces them with the result.
+    </p>
+
+    <p>
+        Note that in this case the stack pointer starts with the value <code>198</code>, and that there are two values
+        on the stack, <code>5</code> and <code>8</code>, with <code>8</code> being on the top of the stack.
+    </p>
+
+    <img src="img/sadd1.png">
+
+    <p>
+        The first step in execution is to add the two values together, producing the value <code>13</code> and placing
+        it in the slot just above the current stack pointer.
+    </p>
+
+    <img src="img/sadd2.png">
+
+    <p>
+        The next step in execution is to increment the stack pointer to <code>199</code>.  This step effectively drops
+        the top value <code>8</code> from the stack, leaving <code>13</code>, the result of the addition, at the top
+        of the stack.
+    </p>
+
+    <p>
+        Note also that the <code>8</code> value is not zero'd out: it is no longer relevant since the stack pointer
+        is "above" (or, if you like, "below" it).
+    </p>
+
+    <img src="img/sadd3.png">
+
+    <p>
+        At this point, the LMSM is done with this instruction: the top two values have been "popped" off the stack, added
+        and the result has been "pushed" onto it.
+    </p>
+
+    <h2><code>DAT</code> Assembly Instructions</h2>
+
+    <p>
+        The <code>DAT</code> assembly instruction tells the LMSM assembler: "Put the value following me directly into
+        the memory spot I correspond with.
+    </p>
+
+    <p>
+        Consider the following LMSM Assembly program:
+    </p>
+
+    <img src="img/dat1.png"/>
+
+    <p>
+        The <code>DAT</code> assembly instruction tells the assembler to place the raw value <code>1</code> into the
+        memory location that the instruction corresponds to.  In this case, the value <code>1</code> is placed in
+        memory location <code>4</code>, since that is the memory slot that corresponds with the <code>DAT</code>
+        assembly instruction.
+    </p>
+
+    <p>
+        The <code>DAT</code> assembly instruction lets programmers save numbers in memory for use in their programs.  In
+        this case, the program asks the user for input, adds the value 1 to it (even though the second instruction
+        reads <code>ADD 4</code>, remember that means "Add the value in <em>memory location</em> 4 to the accumulator")
+        and then outputs the result.
+    </p>
+
+    <h2>Labels</h2>
+
+    <p>
+        Labels are a feature of LMSM that let programmers use symbolic, rather than absolute, locations when writing
+        assembly.  In the previous example, the <code>ADD</code> instruction had a hard-coded reference to memory location
+        <code>4</code>.
+    </p>
+
+    <p>
+       But what if we added another instruction, say another <code>ADD</code>, to add the number twice:
+    </p>
+
+    <img src="img/label1.png"/>
+
+    <p>
+        Now we are in a bad spot!  The <code>ADD 4</code> instructions reference memory location <code>4</code>, but that
+        holds the <code>HLT</code> instruction, which has the value <code>0</code>.  So we are now inadvertently adding
+        the value <code>0</code> to the accumulator twice!
+    </p>
+
+    <p>
+        We could fix this by updating the two instructions to be <code>ADD 5</code>, but it would get annoying if, every
+        time we changed the program, we had to go back and edit all these instructions.  What would be better is if
+        we could give a particular instruction a <em>symbolic name</em> and then let the assembler figure out the
+        location that the instruction ends up at.
+    </p>
+
+    <p>
+        This is exactly what labels give us.  Any assembly instruction, including <code>DAT</code> instructions,
+        can be labeled with a prefix, and then referred to by other instructions via that prefix.
+    </p>
+
+    <p>
+        Let's give the <code>DAT</code> instruction the label <code>ONE</code>, since it holds the value <code>1</code>
+        for use in our program:
+    </p>
+
+    <img src="img/label2.png"/>
+
+    <p>
+        We prefix the <code>DAT</code> instruction with the label <code>ONE</code> and then update the <code>ADD</code>
+        instructions to refer to that label, rather than fixed positions in memory.  Now the assembler goes through
+        the trouble of figuring exactly where the value <code>1</code> ends up in memory, and generates the correct
+        machine instructions for the <code>ADD</code> assembly instructions.
+    </p>
+
+    <p>
+        Much nicer!
+    </p>
+
+    <h2>Pseudo-Instructions</h2>
+
+    <p>
+        In addition to the "real" assembly instructions above, LMSM assembly supports two "pseudo-instructions".
+        Pseudo-instructions are assembly instructions that are valid assembly, but that do not correspond directly
+        to a single machine instruction.
+    </p>
+
+    <p>
+        Pseudo-instructions are included in the LMSM to make assembly programming more convenient and because they
+        are common in other more realistic assembly languages, particularly
+        <a href="https://en.wikipedia.org/wiki/Reduced_instruction_set_computer">RISC-based</a> languages like
+        <a href="https://en.wikipedia.org/wiki/MIPS_architecture">MIPS</a>.
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Pseudo-Instruction</th>
+            <th>Assembly Instructions</th>
+            <th>Description</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                SPUSHI &lt;XX&gt;
+            </td>
+            <td>
+                LDI &lt;XX&gt;<br/>
+                SPUSH
+            </td>
+            <td>
+                This pseudo-instruction pushes the immediate value given onto the stack, compiling down to two
+                real instructions
+            </td>
+        </tr>
+        <tr>
+            <td>
+                CALL &lt;XX&gt;
+            </td>
+            <td>
+                LDI &lt;XX&gt;<br/>
+                SPUSH<br/>
+                JAL
+            </td>
+            <td>
+                This pseudo-instruction pushes the address of a function onto the stack and then jump-and-links to it
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Loops & Conditionals In LMSM</h2>
+
+    <p>
+        To understand how loops and conditionals work in LMSM, let's look at a classic LMC program that asks a user
+        for input and then counts down:
+    </p>
+
+    <pre>
+    INP
+    OUT
+    LOOP BRZ QUIT
+    SUB ONE
+    OUT
+    BRA LOOP
+    QUIT HLT
+    ONE DAT 1
+    </pre>
+
+    <p>
+        Here is each line explained:
+    </p>
+
+    <ul>
+        <li>
+            Line 1 asks the user to enter a number and saves it in the accumulator
+        </li>
+        <li>
+            Line 2 prints that number out.
+        </li>
+        <li>
+            Line 3 is labeled <code>LOOP</code> and jumps (or branches) to the location labeled <code>QUIT</code>
+            if the accumulator is <code>0</code>
+        </li>
+        <li>
+            Line 4 subtracts the value stored in the memory location labeled <code>ONE</code> from the accumulator.
+        </li>
+        <li>
+            Line 5 prints the accumulator out.
+        </li>
+        <li>
+            Line 6 unconditionally jumps back to the instruction on line 3, labled <code>LOOP</code>
+        </li>
+        <li>
+            Line 7 is labeled <code>QUIT</code> and halts the machine
+        </li>
+        <li>
+            Line 8 is labeled <code>ONE</code> and holds the raw value <code>1</code>
+        </li>
+    </ul>
+
+    <p>
+        So, this program will ask the user for a number and then print out a count-down from that number to
+        <code>0</code>.  The conditional branch on line 3 gives us the conditional, akin to an <code>if</code>
+        statement in a higher level programming language.  The unconditional branch on line 6 is what makes the
+        code "loop".
+    </p>
+
+    <h2>Function Calls</h2>
+
+    <p>
+        The last major bit of functionality to understand about the LMSM is how function calls work.  This topic
+        is sufficiently complicated and important as to deserve its own section, which you can find <a href="functions.html">here</a>.
+    </p>
+
+</main>
+<footer>
+</footer>
+</body>
+</html>

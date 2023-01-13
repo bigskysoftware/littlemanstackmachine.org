@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://the.missing.style/">
+    <title>The Little Man Stack Machine</title>
+</head>
+<body>
+<main>
+    <h1 class="massivetext">&#x1F64B; The Little Man Stack Machine</h1>
+    <nav>
+        <p class="tool-bar">
+            <a href="index.html">Intro</a>
+            <a href="assembly.html">Assembly & Execution</a>
+            <a href="functions.html">Functions</a>
+            <a href="firth.html">Firth</a>
+            <a href="emulator.html">Emulator</a>
+            <a href="https://github.com/bigskysoftware/littlemanstackmachine.org">Github</a>
+        </p>
+    </nav>
+
+    <h1>Functions On The LMSM</h1>
+
+    <p>
+        The LSMS is designed to make <a href="https://en.wikipedia.org/wiki/Function_(computer_programming)">function</a>,
+        including <a href="https://en.wikipedia.org/wiki/Recursion_(computer_science)">recursive function calls</a>,
+        possible, despite the limited resources available to the system.
+    </p>
+
+    <p>
+        This is accomplished by two registers: the <code>stack_pointer</code> register and the <code>return_address_pointer</code>
+        register.
+    </p>
+
+    <p>
+        The <code>stack_pointer</code> register points to the "top" of the value stack, and grows <em>down</em> in
+        memory.  The value stack holds values that are used for computation, such as two numbers that are to be added.
+    </p>
+
+    <p>
+        The <code>return_address_pointer</code> register points to the "top" of the return address stack, and grows <em>up</em> in
+        memory.  The return address stack holds the return address(es) for a series of function calls.
+    </p>
+
+    <h2>The <code>JAL</code> and <code>RET</code> Assembly Instructions</h2>
+
+    <p>
+        Let's look at how the Jump-And-Link (<code>JAL</code>) and Return (<code>RET</code>) instructions work.
+    </p>
+
+    <p>
+        Here is a simple example of an LSMM assembly program that asks a user for input, calls a function to square
+        that number, and then prints the result.  Here is the assembly and the assembled machine instructions:
+    </p>
+    
+    <img src="img/function1.png">
+
+    <p>
+        A fair amount going on here, so lets go through the program first
+    </p>
+
+    <ul>
+        <li>We ask the user for input and then push that value onto the value stack</li>
+        <li>We then load the address of the instruction labeled <code>SQUARE</code> into the accumulator</li>
+        <li>We then push that value onto the value stack</li>
+        <li>Next we call the "Jump And Link" instruction</li>
+        <li>After that we (somewhat mysteriously) pop a value off the value stack and print it.</li>
+        <li>Finally, we halt</li>
+        <li>Below all that, starting at a location labled <code>SQUARE</code>, we duplicate the top of the stack</li>
+        <li>We then multiple the top two values on the value stack and replace them with the result</li>
+        <li>Finally we call the "Return" instruction</li>
+    </ul>
+
+    <p>
+        We can generate the same machine instructions, and clarify our code a bit, by using the <code>CALL</code>
+        pseudo-instruction:
+    </p>
+
+    <img src="img/function2.png">
+
+    <p>
+        This generates the same machine code, but is more readable: it is clearer that we are calling the function
+        defined at memory location <code>SQUARE</code> now.
+    </p>
+
+    <h2>The LMSM Calling Convention</h2>
+
+    <p>
+        What is the mysterious <code>SPUSH</code> just before the <code>CALL</code> instruction, and what is the
+        <code>SPOP</code> after it?  To understand what these instructions are doing we need to discuss the concept
+        of a <a href="https://en.wikipedia.org/wiki/Calling_convention">Calling Convention.</a>
+    </p>
+
+    <p>
+        A Calling Convention is a mechanism whereby a function receives arguments from a caller and returns a value
+        to the caller.4
+    </p>
+
+    <p>
+        In the case of the LMSM, the calling convention is very simple: arguments are passed to the function on the
+        value stack, and the result of the function is left on the top of the value stack for the caller.
+    </p>
+
+    <p>
+        In this program, we wish to pass the value that the user entered to the <code>SQUARE</code> function, so we
+        "push" it before we call the function.
+    </p>
+
+    <p>
+        The <code>SQUARE</code> function then duplicates this value and issues a <code>SMUL</code> instruction, which
+        multiplies the parameter by a duplicate of itself, effectively squaring the value and leaving that
+        result on the top of the stack.
+    </p>
+
+    <p>
+        At this point, the <code>SQUARE</code> function can return to the caller.  The caller knows that the result
+        of the function call has been left on the top of the stack, so it can "pop" it off (from the stack into the
+        accumulator) and then print it out, and, finally, halt.
+    </p>
+
+    <p>
+        The caller and the callee use the value stack to communicate with one another: the caller passes parameters in
+        on the value stack and the caller passes the return value out on the top of the stack.
+    </p>
+
+    <h2>A Function Call Step-by-Step</h2>
+
+    <p>
+        Let's go step by step and watch how this function call works.
+    </p>
+
+    <h3>Step 1: Get Input From User</h3>
+
+    <p>
+        The first instruction tells the LMSM to ask the user for input.  Let's say the user entered <code>3</code>.
+        After this instruction is executed the machine will look like this:
+    </p>
+
+    <img src="img/call1.png">
+
+    <p>
+        Note that the accumulator now has the value <code>3</code> in it.
+    </p>
+
+    <h3>Step 2: Push The User Input Onto The Stack</h3>
+
+    <p>
+        The next instruction tells the LMSM to push the value of the accumulator onto the stack, because it will be
+        the argument the the <code>SQUARE</code> function.  When this instruction has executed, the machine will
+        look like this:
+    </p>
+
+    <img src="img/call2.png">
+
+    <p>
+        The stack pointer has been decremented from <code>200</code> to <code>199</code>, and the accumulator value
+        <code>3</code> has been stored onto the "top" of the value stack.  Recall that the value stack "grows"
+        downward, which is a common situation with computers.
+    </p>
+
+    <h3>Step 3: Load The Address Of The Function</h3>
+
+    <p>
+        The next instruction tells the LMSM to load the memory address of the function that is going to be called
+        into the accumulator.  The function we are going to call is located at memory location <code>8</code>.
+    </p>
+
+    <img src="img/call3.png">
+
+    <p>
+        When the instruction is complete the value <code>8</code> sits in the accumulator
+    </p>
+
+    <h3>Step 4: Push The Function Address Onto The Stack</h3>
+
+    <p>
+        In the final setup instruction before actually jumping to the <code>SQUARE</code> function code, the value
+        <code>8</code> is pushed onto the stack.
+    </p>
+
+    <img src="img/call4.png">
+
+    <p>
+        Now we are ready for the magic of the Jump & Link Instruction
+    </p>
+
+    <h3>Step 5: The Magic Jump & Link Instruction</h3>
+
+    <p>
+        We now get to the most magical part of the function call mechanic, the Jump & Link instruction.  This instruction
+        does quite a bit:
+    </p>
+
+    <ul>
+        <li>It consumes the top of the stack</li>
+        <li>It sets the program counter to the value that was consumed from the top of the stack</li>
+        <li>It pushes the address of the <em>next instruction</em> onto the return address stack</li>
+    </ul>
+
+    <img src="img/call5.png">
+
+    <p>
+        You can see that the value stack pointer has been incremented, effectively popping off the top value.  The
+        return address pointer has also been incremented, but that stack is different in that it grows <em>up</em>,
+        rather than down.  The return address of <code>5</code> has been placed on the return address stack because,
+        when the <code>SQUARE</code> function returns, we wish to jump back to that address.
+    </p>
+
+    <p>
+        This is really the crux of the whole function call and is very important to understand.  Other computer systems
+        have different mechanisms for storing return addresses (usually there is only one stack) but the core concept
+        is the same: jump to some location that contains a function definition and simultaneously save address of the
+        next instruction to return to when that function is complete.
+    </p>
+
+    <p>
+        This is how we impose the (completely immaterial) idea of "functions" on top of dumb memory slots.  This
+        abstraction is what allows us to build incredibly complicated software on top of these machines.  Some trick!
+    </p>
+
+    <h3>Step 6: Duplicating The Argument</h3>
+
+    <p>
+        At this point, the function <code>SQUARE</code> is executing, and the first thing it is going to do is duplicate
+        the top of the value stack.  Recall that the argument to the <code>SQUARE</code> function has been placed on
+        the stack before it was called.
+    </p>
+
+    <img src="img/call6.png">
+
+    <p>
+        The machine now has two values on the value stack, which sets it up to do a stack multiplication on the next step.
+        Note that the stack pointer has been decremented and the top of the value stack is now at memory location <code>198</code>.
+    </p>
+
+    <h3>Step 7: Multiplying The Two Values</h3>
+
+    <p>
+        It is finally time to do the actual work of the <code>SQUARE</code> function, were we multiply the top two
+        values together and replace them with the result.
+    </p>
+
+    <img src="img/call7.png">
+
+    <p>
+        Note that the stack pointer has been incremented and that the result value, <code>9</code> sits on the "top"
+        of the value stack.
+    </p>
+
+    <h3>Step 8: Returning To The Caller</h3>
+
+    <p>
+        This is the second part of the magic of a function call at the assembly level: returning to the caller.  This
+        is simpler than the Jump & Link instruction: we can just pop the value on the top of the return address
+        stack into the program counter, and we are done:
+    </p>
+
+    <img src="img/call8.png">
+
+    <p>
+        Note that this is following the calling convention defined for the LMSM: the result of the <code>SQUARE</code>
+        function has been left on the top of the value stack.
+    </p>
+
+    <h3>Step 9: Popping The Return Value Off The Value Stack</h3>
+
+    <p>
+        We want to print the return value of the <code>SQUARE</code> function out, but we can only print from the
+        accumulator register, so we need to first pop the value off the stack and into the accumulator:
+    </p>
+
+    <img src="img/call9.png">
+
+    <h3>Step 10: Printing The Value</h3>
+
+    <p>
+        Finally, we print the value out, with a successful function call completed!
+    </p>
+
+    <img src="img/call10.png">
+
+    <p>
+        The next instruction is a <code>HLT</code>, which stops the machine.  We will omit a diagram for this step.
+    </p>
+
+    <h3>A Function Call... Done!</h3>
+
+    <p>
+        So that is a complete walk through of a function call on the LMSM.  Yes, the LMSM is a very simple and
+        resource constrained machine, but this demonstrates the core concepts of function calls as found on more
+        sophisticated machines as well.
+    </p>
+
+    <p>
+        Hopefully you have a better sense of how all this magic works now.
+    </p>
+
+</main>
+<footer>
+</footer>
+</body>
+</html>

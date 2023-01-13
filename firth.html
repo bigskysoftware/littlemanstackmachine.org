@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://the.missing.style/">
+    <title>The Little Man Stack Machine</title>
+</head>
+<body>
+<main>
+    <h1 class="massivetext">&#x1F64B; The Little Man Stack Machine</h1>
+    <nav>
+        <p class="tool-bar">
+            <a href="index.html">Intro</a>
+            <a href="assembly.html">Assembly & Execution</a>
+            <a href="functions.html">Functions</a>
+            <a href="firth.html">Firth</a>
+            <a href="emulator.html">Emulator</a>
+            <a href="https://github.com/bigskysoftware/littlemanstackmachine.org">Github</a>
+        </p>
+    </nav>
+
+    <h1>Firth: A High Level Stack Oriented Language</h1>
+
+    <p>
+        A design goal of the LMSM is to provide <em>just</em> enough infrastructure such that a small,
+        <a href="https://en.wikipedia.org/wiki/High-level_programming_language"> high-level programming language </a>
+        can be built for it relatively easily.  Because of the stack instructions that the LMSM adds to the LMC,
+        a <a href="https://en.wikipedia.org/wiki/Stack-oriented_programming">stack-oriented</a> programming
+        language makes the most sense.
+    </p>
+
+    <p>Stack languages are not popular today, but in the past there was a lot of interest in them, and they provide
+    an interesting, alternative way to think about programming.</p>
+
+    <p>
+        The programming language for the LSMS is called "Firth", a nod to the once-popular but largely forgotten
+        programming language <a href="https://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>. Like
+        Forth, Firth has a <a href="https://en.wikipedia.org/wiki/Reverse_Polish_notation">Revers Polish notation</a>
+        syntax that may appear a little strange at first, but that grows on you.
+    </p>
+
+    <p>
+        A Firth compiler should be provided with any implementation of the LMSM, to show how a high-level programming
+        language can compile down to LMSM assembly.
+    </p>
+
+    <h2>An Example Program: Squaring A Number</h2>
+
+    <p>
+        Before we delve into the details of Firth, let's look at an example program, based on the <code>SQUARE</code>
+        assembly program we looked at on the <a href="assembly.html">LMSM Assembly</a> page.  The Firth program
+        that would compile down to this assembly looks like this:
+    </p>
+
+    <pre>
+    get
+    square()
+    .
+
+    def square()
+      dup *
+    end
+    </pre>
+
+    <p>
+        This probably looks a little strange, but lets go through it line by line.
+    </p>
+
+    <p>
+        The first line, <code>get</code>, gets an integer from the user and pushes it onto the top of the value stack.
+    </p>
+
+    <p>
+        The second line, <code>square()</code>, invokes the function <code>square</code>.  Note that the argument to
+        the <code>square</code> function is passed <em>implicitly</em>, on the value stack.  This may seem strange, but
+        this is how Forth and many stack-based programming languages work!
+    </p>
+
+    <p>
+        The third line, <code>.</code>, prints the top of the stack out.  This syntax is taken directly from Forth.
+    </p>
+
+    <p>
+        Next comes the definition of the function <code>square()</code>.  Its body consists of a single line: <code>dup *</code>.
+        These two "words" are the Firth way of saying "Duplicate the top of the value stack and then replace the top two
+        values of the value stack with the result of multiplying them together."
+    </p>
+
+    <p>
+        This is the "Reverse Polish notation" nature of Firth.  A more traditional programming language might look like
+        this:
+    </p>
+
+    <pre>
+    def square(x)
+      x * x
+    end
+    </pre>
+
+    <p>
+        Where the multiplication operator uses <a href="https://en.wikipedia.org/wiki/Infix_notation">Infix notation</a>.
+        But this is not how Firth works: it's a stack language and it's good for people to see a different way of thinking
+        about computation.
+    </p>
+
+    <p>
+        Note that there is no explicit <code>return</code> in the definition of the <code>square()</code>
+        function.  There is actually support for the <code>return</code> keyword in Firth, but it isn't necessary here:
+        the square value is computed by the body of the function and left on the value stack, so when the function returns
+        the return value is where it should be.  Hacky, but cool!
+    </p>
+
+    <p>
+      So that's a quick introduction to the Firth programming language.  Let's look at the elements that make it up
+    </p>
+
+    <h2>Components Of The Firth Programming Langauge</h2>
+
+    <p>
+        The Firth programming language consists of a set of <em>elements</em>.  Calling them "expressions" or "statements"
+        in the traditional sense of those terms is a little misleading, since values are stored on a stack, so we will
+        stick with the term "element".
+    </p>
+
+    <h3>Basic Elements</h3>
+
+    <p>Firth supports the following "basic" elements:</p>
+
+    <table style="width: 100%">
+        <thead>
+        <tr>
+            <th>
+                Element
+            </th>
+            <th>
+                Example
+            </th>
+            <th>
+                Assembly
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                Numbers
+            </td>
+            <td>
+                <code>3</code>
+            </td>
+            <td>
+                <code>LDI 3 SPUSH</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Plus
+            </td>
+            <td>
+                <code>2 3 +</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SADD</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Minus
+            </td>
+            <td>
+                <code>2 3 -</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SSUB</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Multiplication
+            </td>
+            <td>
+                <code>2 3 *</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SMUL</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Division
+            </td>
+            <td>
+                <code>2 3 /</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SDIV</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Maximum
+            </td>
+            <td>
+                <code>2 3 max</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SMAX</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Minimum
+            </td>
+            <td>
+                <code>2 3 min</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SMIN</code>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h3>Stack Elements</h3>
+
+    <p>Firth supports the following elements to operate on the value stack:</p>
+
+    <table style="width: 100%">
+        <thead>
+        <tr>
+            <th>
+                Element
+            </th>
+            <th>
+                Example
+            </th>
+            <th>
+                Assembly
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                Pop Top Of Stack Off
+            </td>
+            <td>
+                <code>pop</code>
+            </td>
+            <td>
+                <code>SPOP</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Duplicate Top Of Stack
+            </td>
+            <td>
+                <code>dup</code>
+            </td>
+            <td>
+                <code>SDUP</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Swap The Top Two Elements On The Stack
+            </td>
+            <td>
+                <code>swap</code>
+            </td>
+            <td>
+                <code>SSWAP</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Drop The Top Element Of The Stack
+            </td>
+            <td>
+                <code>drop</code>
+            </td>
+            <td>
+                <code>SDROP</code>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p>
+        The difference between <code>pop</code> and <code>drop</code> is that <code>pop</code> leaves the top value
+        of the stack in the accumulator, whereas <code>drop</code> does not.
+    </p>
+
+    <h3>I/O</h3>
+
+    <p>Firth supports the following elements for IO:</p>
+
+    <table style="width: 100%">
+        <thead>
+        <tr>
+            <th>
+                Element
+            </th>
+            <th>
+                Example
+            </th>
+            <th>
+                Assembly
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                Get
+            </td>
+            <td>
+                <code>get</code>
+            </td>
+            <td>
+                <code>INP SPUSH</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Print
+            </td>
+            <td>
+                <code>.</code>
+            </td>
+            <td>
+                <code>SDUP POP OUT</code>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h3>Conditional Elements</h3>
+
+    <p>
+        Firth supports two conditional statements: <code>zero?</code> and <code>positive?</code>.  These elements
+        consume the top of the stack.  If the condition is true of the top of the stack, they execute the elements in
+        their body, which is terminated by an <code>end</code> keyword.
+    </p>
+
+    <p>
+        If the condition is not true, the elements will execute an optional <code>else</code> block, if it is included,
+    otherwise they will do nothing.
+    </p>
+
+    <p>
+        Here is an example Firth program that asks the user for input and prints <code>1</code> if they enter
+        <code>0</code>, and <code>1</code> otherwise.
+    </p>
+    <pre>
+  get
+  zero?
+    1 .
+  else
+    0 .
+  end
+    </pre>
+
+    <h3>The Loop Element</h3>
+
+    <p>
+        Firth supports a simple loop that starts with the <code>do</code> keyword and ends with the <code>loop</code>
+        keyword.  A look can be exited with the <code>stop</code> keyword.
+    </p>
+
+    <p>
+        Here is an example of a loop that runs until the user enters a zero value:
+    </p>
+
+    <pre>
+  do
+    get
+    zero?
+      stop
+    end
+  loop
+    </pre>
+
+    <h3>Global Variables</h3>
+
+    <p>
+        Firth supports global variables.  They can be declared using the <code>var</code> keyword:
+    </p>
+
+    <code>
+  var x
+    </code>
+
+    <p>
+        Variables can be set by appending an exclaimation point to them.  This will consume the top of the stack
+        and set the variable to it.  The following program declares a variable <code>x</code>, saves user input
+        into it, multiplies the variable by itself and then prints the result:
+    </p>
+
+    <pre>
+        var x
+        get
+        x!
+        x x *
+        .
+    </pre>
+
+    <h3>Functions</h3>
+
+    <p>
+        Functions can be declared using the <code>def</code> keyword, followed by a function name.  All function names
+        must end in the characters <code>()</code>.  Note that you cannot declare parameters for a function: they
+        are passed implicitly on the stack.
+    </p>
+
+    <p>
+        The implementation of the function consists of a series of elements, followed by the keyword <code>end</code>:
+    </p>
+
+    <pre>
+  def square()
+    dup *
+  end
+    </pre>
+
+    <p>
+        Functions can return to a caller by using the <code>return</code> element.  The <code>return</code> element
+        is optional: a function will implicitly return when its body completes.
+    </p>
+
+    <p>
+        Note that functions in Firth can call themselves recursively!
+    </p>
+
+    <h3>Inline Assembly</h3>
+
+    <p>
+        LMSM assembly can be included in a Firth program by using the <code>asm</code> keyword, followed by the
+        <code>end</code> keyword.
+    </p>
+
+    <p>
+        Here is some Firth code that uses raw assembly to print out the value stored in the accumulator:
+    </p>
+
+    <pre>
+  get
+  pop
+  asm
+    OUT
+  end
+    </pre>
+
+    <h2>Fibbonacci.firth</h2>
+
+    <p>
+        Below is a recursive implementation of the <a href="https://en.wikipedia.org/wiki/Fibonacci_number">fibonacci</a>
+        function in Firth:
+    </p>
+
+    <pre>
+get
+fib()
+.
+
+def fib()
+
+  dup
+  zero?
+    return
+  end
+
+  dup 1 -
+  zero?
+    return
+  end
+
+  dup 2 -
+  fib()
+
+  swap 1 -
+  fib()
+
+  +
+end
+    </pre>
+
+</main>
+<footer>
+</footer>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://the.missing.style/">
+    <title>The Little Man Stack Machine</title>
+</head>
+<body>
+<main>
+    <h1 class="massivetext">&#x1F64B; The Little Man Stack Machine</h1>
+    <nav>
+        <p class="tool-bar">
+            <a href="index.html">Intro</a>
+            <a href="assembly.html">Assembly & Execution</a>
+            <a href="functions.html">Functions</a>
+            <a href="firth.html">Firth</a>
+            <a href="emulator.html">Emulator</a>
+            <a href="https://github.com/bigskysoftware/littlemanstackmachine.org">Github</a>
+        </p>
+    </nav>
+
+    <h1>Introduction</h1>
+    <p>
+        The Little Man Stack Machine (LMSM) is a backwards-compatible extension of the venerable and excellent
+        <a href="https://en.wikipedia.org/wiki/Little_man_computer">Little Man Computer</a> (LMC) teaching computer model,
+        intended to give people a gentle introduction to how computers work at a low level.
+    </p>
+
+    <p>
+        Like the LMC, the LMSM models a simple <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von
+        Neumann</a> computing machine and the execution cycle is identical to the LMC.
+    </p>
+
+    <p>
+        As the name suggests, the LMSM introduces the notion of a stack (two stacks, actually) in order to
+        demonstrate:
+    </p>
+
+    <ul>
+        <li>How stack-machines work</li>
+        <li>How functions work</li>
+    </ul>
+
+    <p>
+        At the system level, the LMSM makes the following changes to the LMC:
+    </p>
+
+    <ul>
+        <li>
+            The memory space of the LMSM is doubled from 100 slots to 200 slots.
+        </li>
+        <li>
+            Two new registers are available:
+            <ul>
+                <li>
+                    The <code>stack pointer</code> register that points to the top of the <em>value stack</em>.
+                </li>
+                <li>
+                    The <code>return address pointer</code> register that points to the top of the <em>return address
+                    stack</em>.
+                </li>
+            </ul>
+        </li>
+        <li>
+            A new <code>LDI</code> <a href="https://en.wikichip.org/wiki/immediate_value">"immediate" </a> instruction
+            is added for
+            loading values directly into the accumulator.
+        </li>
+        <li>
+            A new set of stack-related instructions are available for working with the two stacks available on the
+            LMSM
+        </li>
+        <li>
+            Two virtual instructions are available to make assembly coding on the LMSM more pleasant.
+        </li>
+    </ul>
+
+    <h2>System Diagram</h2>
+
+    <p>
+        Below is a system diagram of the LMSM:
+    </p>
+
+    <img src="img/lmsm_architecture.png">
+
+    <h3>Overall System Description</h3>
+
+    <p>
+        Like the LMC, the LMSM works only in terms of integers between the values -999 and 999.  These integers can
+        be interpreted as either data or as instructions, depending on the context they are used in.  The LMSM
+        follows a simple <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von Neumann</a> style
+        <a href="https://en.wikipedia.org/wiki/Instruction_cycle">Instruction Cycle</a>: it loads an instruction from
+        memory, executes the instruction and then repeats.
+    </p>
+
+    <p>
+        More detail on the execution cycle can be found on the <a href="assembly.html">Assembly & Execution</a> page.
+    </p>
+
+    <h3>Registers</h3>
+
+    <p>
+        To support computation, the LMSM has a total of five registers (two more than the LMC).  The registers are as follows:
+    </p>
+
+    <ul>
+        <li>
+            The <code>program_counter</code> register - a register that points to memory location of the next instruction to execute.
+            This register starts with the value 0.
+        </li>
+        <li>
+            The <code>accumulator</code> register - a register that is used to "accumulate" values by, for example, an instruction
+            adding a value in memory to the value already in the accumulator.  This register starts at value 0.
+        </li>
+        <li>
+            The <code>current_instruction</code> register - a register that holds the currently executing instruction.
+            This register starts at value 0.
+        </li>
+        <li>
+            The <code>stack_pointer</code> register - a register that points to the memory location at the "top" of the
+            value stack.  This pointer starts at value 199 and is <em>decremented</em> as the value stack grows.
+        </li>
+        <li>
+            The <code>return_address_pointer</code> register - a register that points to the memory location at the "top" of the
+            return address stack.  This pointer starts at value 100 and is <em>incremented</em> as the value stack grows.
+        </li>
+    </ul>
+
+    <h3>Memory</h3>
+    <p>
+        The LMSM has a total of 200 memory slots, double that of the LCM.  The memory is split into two sections: "lower"
+        and "upper" segments. Traditional LMC instructions operate on the lower memory segment, while the LMSM stack
+        instructions of LMSM operate on the upper section of memory.
+    </p>
+
+    <h2>The Stacks & Function Calls</h2>
+
+    <p>
+        A major goal of the LMSM is to provide hardware infrastructure for implementing
+        <a href="https://en.wikipedia.org/wiki/Function_(computer_programming)">function calls</a> so that students
+        can see how functions can be implemented on top of raw registers and memory. The function invocation
+        mechanism in the LMSM is simple but demonstrates the core concept of using a stack, and allows for recursive
+        function calls.
+    </p>
+
+    <p>
+        See <a href="functions.html">Functions</a> for a detailed look at function calls on the LMSM.
+    </p>
+
+    <h2>Firth</h2>
+
+    <p>
+        While the LMC is very good for introducing students to how assembly and low level computation works, it
+        does not provide good infrastructure for creating a high-level programming language.
+    </p>
+
+    <p>
+        The LMSM, by offering a more sophisticated CPU model, allows us to create a simple
+        <a href="https://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>-inspired language that
+        compiles down to LSMS assembly code, complete with functions, loops, conditionals and so forth.
+    </p>
+
+    <p>
+        See <a href="firth.html">Firth</a> for more information on this language.
+    </p>
+
+</main>
+<footer>
+</footer>
+</body>
+</html>
