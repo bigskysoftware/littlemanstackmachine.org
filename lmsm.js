@@ -257,6 +257,8 @@ class LMSMAssembler {
 
 class FirthCompiler {
 
+    conditional = 1;
+
     OPS = {"+" : "SADD",
            "-" : "SSUB",
            "*" : "SMUL",
@@ -269,7 +271,7 @@ class FirthCompiler {
            "." : "SDUP\nSPOP\nOUT"}
 
     compile(firthSource) {
-        let tokens = firthSource.trim().split(/\s*/);
+        let tokens = firthSource.trim().split(/\s+/);
         let rootElements = this.parseElements(tokens);
         let assembly = this.codeGen(rootElements);
         return assembly
@@ -293,6 +295,34 @@ class FirthCompiler {
         }
     }
 
+    parseZeroTest(tokens) {
+        if (tokens[0] === "zero?") {
+            let zeroElt = {
+                type: "Zero",
+                token: tokens.shift(),
+                trueBranch : [],
+                falseBranch : [],
+            };
+
+            while (tokens.length > 0 && tokens[0] !== "end" && tokens[0] !== "else") {
+                zeroElt.trueBranch.push(this.parseElement(tokens));
+            }
+
+            if (tokens[0] === "else") {
+                while (tokens.length > 0 && tokens[0] !== "end") {
+                    zeroElt.falseBranch.push(this.parseElement(tokens));
+                }
+            }
+
+            if (tokens[0] === "end") {
+                tokens.shift();
+            } else {
+                zeroElt.error = "Expected 'end' to close 'zero?'"
+            }
+            return zeroElt;
+        }
+    }
+
     parseElement(tokens) {
         let elt = this.parseInt(tokens);
         if (elt) {
@@ -302,6 +332,11 @@ class FirthCompiler {
         let op = this.parseOp(tokens);
         if (op) {
             return op;
+        }
+
+        let zero = this.parseZeroTest(tokens);
+        if (zero) {
+            return zero;
         }
 
         return {
@@ -324,6 +359,28 @@ class FirthCompiler {
             code.push("SPUSHI " + element.value + "\n");
         } else if (element.type === "Op") {
             code.push(this.OPS[element.op] + "\n");
+        } else if (element.type === "Zero") {
+            let conditionalNum = this.conditional++;
+            let trueLabel = "ZERO_" + conditionalNum;
+            let endLabel = "END_ZERO_" + conditionalNum;
+            code.push("SPOP\nBRZ ")
+            if (element.trueBranch.length > 0) {
+                code.push(trueLabel + "\n");
+            } else {
+                code.push(endLabel + "\n");
+            }
+            for (const elt of element.falseBranch) {
+                this.codeGenForElement(elt, code);
+            }
+            code.push("BRA " + endLabel + "\n");
+
+            if (element.trueBranch.length > 0) {
+                code.push(trueLabel + " ")
+                for (const elt of element.trueBranch) {
+                    this.codeGenForElement(elt, code);
+                }
+            }
+            code.push(endLabel + " ");
         }
     }
 
@@ -332,10 +389,11 @@ class FirthCompiler {
         for (const element of elements) {
             this.codeGenForElement(element, code);
         }
+        code.push("HLT"); // Always end with a halt
         return code.join("");
     }
 }
 
-// let lmsm = new LittleManStackMachine();
-// lmsm.compileAndRun("1 1 + .")
-// console.log(lmsm.output)
+let lmsm = new LittleManStackMachine();
+lmsm.compileAndRun("0 zero? 1 . end")
+console.log(lmsm.output)
