@@ -14,6 +14,16 @@ class LittleManStackMachine {
         return_address_pointer:99
     }
 
+    compileAndRun(src) {
+        let compiler = new FirthCompiler();
+        let compiledAssembly = compiler.compile(src);
+        console.log(compiledAssembly);
+        let assembler = new LMSMAssembler();
+        let machine_code = assembler.assemble(compiledAssembly);
+        this.load(machine_code);
+        this.run();
+    }
+
     assembleAndRun(src) {
         let assembler = new LMSMAssembler();
         let machine_code = assembler.assemble(src);
@@ -173,7 +183,7 @@ class LMSMAssembler {
     ARG_INSTRUCTIONS = ["ADD", "SUB", "LDA", "STA", "BRA", "BRZ", "BRP", "DAT", "LDI", "CALL", "SPUSHI"]
 
     assemble(asmSource) {
-        let tokens = asmSource.split(" ");
+        let tokens = asmSource.trim().split(/\s+/);
         let instructions = []
         let labelsToInstructions = {}
         let offset = 0;
@@ -247,44 +257,85 @@ class LMSMAssembler {
 
 class FirthCompiler {
 
-    OPS = ["+", "-"]
+    OPS = {"+" : "SADD",
+           "-" : "SSUB",
+           "*" : "SMUL",
+           "/" : "SDIV",
+           "max" : "SMAX",
+           "min" : "SMIN",
+           "dup" : "SDUP",
+           "swap" : "SSWAP",
+           "drop" : "SDROP",
+           "." : "SDUP\nSPOP\nOUT"}
 
     compile(firthSource) {
-
-        let tokens = firthSource.split(/ \n/);
-
+        let tokens = firthSource.trim().split(/\s*/);
         let rootElements = this.parseElements(tokens);
-
-        let assembly = this.codeGen(parseTree);
-
-
+        let assembly = this.codeGen(rootElements);
+        return assembly
     }
 
-    parseElement(tokens) {
+    parseInt(tokens) {
         if (!isNaN(tokens[0])) {
             return {
-                type:"Number",
+                type: "Number",
                 value: parseInt(tokens.shift()),
-            }
-        } else if (this.OPS.includes(tokens[0])) {
-            return {
-                type:"Op",
-                op: tokens.shift(),
-            }
-        } else {
-            return {
-                type:"ERROR"
-                message: "Uno"
             }
         }
     }
+
+    parseOp(tokens) {
+        if (this.OPS[tokens[0]]) {
+            return {
+                type: "Op",
+                op: tokens.shift(),
+            };
+        }
+    }
+
+    parseElement(tokens) {
+        let elt = this.parseInt(tokens);
+        if (elt) {
+            return elt;
+        }
+
+        let op = this.parseOp(tokens);
+        if (op) {
+            return op;
+        }
+
+        return {
+            type: "ERROR",
+            message: "Unknown token : " + tokens.shift()
+        };
+    }
+
 
     parseElements(tokens) {
         let elements = [];
         while (tokens.length > 0) {
-            elements.push(parseElement(tokens));
+            elements.push(this.parseElement(tokens));
         }
         return elements;
     }
+
+    codeGenForElement(element, code) {
+        if (element.type === "Number") {
+            code.push("SPUSHI " + element.value + "\n");
+        } else if (element.type === "Op") {
+            code.push(this.OPS[element.op] + "\n");
+        }
+    }
+
+    codeGen(elements) {
+        let code = [];
+        for (const element of elements) {
+            this.codeGenForElement(element, code);
+        }
+        return code.join("");
+    }
 }
 
+// let lmsm = new LittleManStackMachine();
+// lmsm.compileAndRun("1 1 + .")
+// console.log(lmsm.output)
