@@ -41,9 +41,9 @@ class LittleManStackMachine {
 
     executeCurrentInstruction() {
         if (this.status !== "Stopped") {
-            this.registers.currentInstruction = this.memory[this.registers.program_counter];
+            this.registers.current_instruction = this.memory[this.registers.program_counter];
             this.registers.program_counter++;
-            this.executeInstruction(this.registers.currentInstruction);
+            this.executeInstruction(this.registers.current_instruction);
         }
     }
 
@@ -93,7 +93,7 @@ class LittleManStackMachine {
             this.memory[this.registers.stack_pointer] = this.registers.accumulator;
         } else if (instruction === 921) {
             this.registers.accumulator = this.memory[this.registers.stack_pointer];
-            this.registers.stack_pointer--;
+            this.registers.stack_pointer++;
         } else if (instruction === 922) {
             this.registers.stack_pointer--;
             this.memory[this.registers.stack_pointer] = this.memory[this.registers.stack_pointer + 1];
@@ -268,13 +268,25 @@ class FirthCompiler {
            "dup" : "SDUP",
            "swap" : "SSWAP",
            "drop" : "SDROP",
+           "return" : "RET",
            "." : "SDUP\nSPOP\nOUT"}
+
+    FUNCTION_PATTERN = /^[a-zA-Z_]+\(\)$/
 
     compile(firthSource) {
         let tokens = firthSource.trim().split(/\s+/);
         let rootElements = this.parseElements(tokens);
         let assembly = this.codeGen(rootElements);
         return assembly
+    }
+
+    parseFunctionCall(tokens) {
+        if (tokens[0].match(this.FUNCTION_PATTERN)) {
+            return {
+                type: "FunctionCall",
+                functionName: tokens.shift(),
+            }
+        }
     }
 
     parseInt(tokens) {
@@ -292,6 +304,32 @@ class FirthCompiler {
                 type: "Op",
                 op: tokens.shift(),
             };
+        }
+    }
+
+    parseFunctionDef(tokens) {
+        if (tokens[0] === "def") {
+            let functionDef = {
+                type: "FunctionDefinition",
+                token: tokens.shift(),
+                name: tokens.shift(),
+                body : [],
+            };
+
+            if (functionDef.name === null || !functionDef.name.match(this.FUNCTION_PATTERN)) {
+                functionDef.error = "Function names must end with ()"
+            }
+
+            while (tokens.length > 0 && tokens[0] !== "end") {
+                functionDef.body.push(this.parseElement(tokens));
+            }
+
+            if (tokens[0] === "end") {
+                tokens.shift();
+            } else {
+                functionDef.error = "Expected 'end' to close function"
+            }
+            return functionDef;
         }
     }
 
@@ -339,6 +377,16 @@ class FirthCompiler {
             return zero;
         }
 
+        let call = this.parseFunctionCall(tokens);
+        if (call) {
+            return call;
+        }
+
+        let def = this.parseFunctionDef(tokens);
+        if (def) {
+            return def;
+        }
+
         return {
             type: "ERROR",
             message: "Unknown token : " + tokens.shift()
@@ -359,6 +407,14 @@ class FirthCompiler {
             code.push("SPUSHI " + element.value + "\n");
         } else if (element.type === "Op") {
             code.push(this.OPS[element.op] + "\n");
+        } else if (element.type === "FunctionCall") {
+            code.push("CALL " + element.functionName + "\n");
+        } else if (element.type === "FunctionDefinition") {
+            code.push(element.name + " ");
+            for (const elt of element.body) {
+                this.codeGenForElement(elt, code);
+            }
+            code.push("RET\n");
         } else if (element.type === "Zero") {
             let conditionalNum = this.conditional++;
             let trueLabel = "ZERO_" + conditionalNum;
@@ -386,14 +442,45 @@ class FirthCompiler {
 
     codeGen(elements) {
         let code = [];
-        for (const element of elements) {
+
+        // generate non-functions first
+        for (const element of elements.filter(element => element.type !== "FunctionDefinition")) {
             this.codeGenForElement(element, code);
         }
-        code.push("HLT"); // Always end with a halt
+        code.push("HLT\n"); // End program with a halt
+        // generate =functions second
+        for (const element of elements.filter(element => element.type === "FunctionDefinition")) {
+            this.codeGenForElement(element, code);
+        }
+
         return code.join("");
     }
 }
 
 let lmsm = new LittleManStackMachine();
-lmsm.compileAndRun("0 zero? 1 . end")
+lmsm.compileAndRun("" +
+    "8\n" +
+    "fib()\n" +
+    ".\n" +
+    "\n" +
+    "def fib()\n" +
+    "\n" +
+    "  dup\n" +
+    "  zero?\n" +
+    "    return\n" +
+    "  end\n" +
+    "\n" +
+    "  dup 1 -\n" +
+    "  zero?\n" +
+    "    return\n" +
+    "  end\n" +
+    "\n" +
+    "  dup 2 -\n" +
+    "  fib()\n" +
+    "\n" +
+    "  swap 1 -\n" +
+    "  fib()\n" +
+    "\n" +
+    "  +\n" +
+    "end")
 console.log(lmsm.output)
