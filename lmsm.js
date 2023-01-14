@@ -333,31 +333,31 @@ class FirthCompiler {
         }
     }
 
-    parseZeroTest(tokens) {
-        if (tokens[0] === "zero?") {
-            let zeroElt = {
-                type: "Zero",
+    parseConditional(tokens) {
+        if (tokens[0] === "zero?" || tokens[0] === "positive?") {
+            let conditionalElt = {
+                type: "Conditional",
                 token: tokens.shift(),
                 trueBranch : [],
                 falseBranch : [],
             };
 
             while (tokens.length > 0 && tokens[0] !== "end" && tokens[0] !== "else") {
-                zeroElt.trueBranch.push(this.parseElement(tokens));
+                conditionalElt.trueBranch.push(this.parseElement(tokens));
             }
 
             if (tokens[0] === "else") {
                 while (tokens.length > 0 && tokens[0] !== "end") {
-                    zeroElt.falseBranch.push(this.parseElement(tokens));
+                    conditionalElt.falseBranch.push(this.parseElement(tokens));
                 }
             }
 
             if (tokens[0] === "end") {
                 tokens.shift();
             } else {
-                zeroElt.error = "Expected 'end' to close 'zero?'"
+                conditionalElt.error = "Expected 'end' to close conditional"
             }
-            return zeroElt;
+            return conditionalElt;
         }
     }
 
@@ -372,9 +372,9 @@ class FirthCompiler {
             return op;
         }
 
-        let zero = this.parseZeroTest(tokens);
-        if (zero) {
-            return zero;
+        let conditional = this.parseConditional(tokens);
+        if (conditional) {
+            return conditional;
         }
 
         let call = this.parseFunctionCall(tokens);
@@ -417,9 +417,14 @@ class FirthCompiler {
             code.push("RET\n");
         } else if (element.type === "Zero") {
             let conditionalNum = this.conditional++;
-            let trueLabel = "ZERO_" + conditionalNum;
-            let endLabel = "END_ZERO_" + conditionalNum;
-            code.push("SPOP\nBRZ ")
+            let trueLabel = "COND_" + conditionalNum;
+            let endLabel = "END_COND_" + conditionalNum;
+            code.push("SPOP\n")
+            if (element.token === "zero?") {
+                code.push("BRZ ");
+            } else {
+                code.push("BRP ");
+            }
             if (element.trueBranch.length > 0) {
                 code.push(trueLabel + "\n");
             } else {
