@@ -289,9 +289,17 @@
     <h2>The "Load Immediate" Instruction</h2>
 
     <p>
-        In addition to these standard LMC instructions, the LMSM also supports an "immediate" instruction to load
-        a value directly into the accumulator. We saw this instruction in our simple "Hello World" program:
+        In addition to these standard LMC instructions, the LMSM also supports two new "standard" instructions:
     </p>
+
+    <ul>
+        <li>
+            An "immediate" instruction to load a value directly into the accumulator (We saw this instruction in our simple "Hello World" program)
+        </li>
+        <li>
+            A "noop" instruction that makes code generation in the Firth compiler easier
+        </li>
+    </ul>
 
     <table>
         <thead>
@@ -311,6 +319,17 @@
             </td>
             <td>
                 Loads the numeric value XX directly into the accumulator.
+            </td>
+        </tr>
+        <tr>
+            <td>
+                900
+            </td>
+            <td>
+                NOOP
+            </td>
+            <td>
+                Does nothing
             </td>
         </tr>
         </tbody>

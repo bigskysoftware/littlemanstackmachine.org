@@ -76,9 +76,12 @@ class LittleManStackMachine {
             if (this.registers.accumulator >= 0) {
                 this.registers.program_counter = instruction - 800;
             }
+        } else if (instruction === 900) {
+            // NOOP - do nothing
         } else if (instruction === 901) {
             // TODO
         } else if (instruction === 902) {
+            console.log(this.registers.accumulator + " ");
             this.output.push(this.registers.accumulator);
         } else if (instruction === 910) {
             this.registers.return_address_pointer++;
@@ -158,6 +161,7 @@ class LMSMAssembler {
         "BRA": 600,
         "BRZ": 700,
         "BRP": 800,
+        "NOOP": 900,
         "INP": 901,
         "OUT": 902,
         "HLT": 0,
@@ -221,7 +225,11 @@ class LMSMAssembler {
             let resolvedArg = null;
             if(instruction.arg){
                 if (isNaN(instruction.arg)) {
-                    resolvedArg = labelsToInstructions[instruction.arg].offset;
+                    let targetInstruction = labelsToInstructions[instruction.arg];
+                    if (targetInstruction == null) {
+                        throw "Cannot find label " + instruction.arg;
+                    }
+                    resolvedArg = targetInstruction.offset;
                 } else {
                     resolvedArg = parseInt(instruction.arg);
                 }
@@ -258,6 +266,8 @@ class LMSMAssembler {
 class FirthCompiler {
 
     conditional = 1;
+    loop = 1;
+    loopStack = [];
 
     OPS = {"+" : "SADD",
            "-" : "SSUB",
@@ -338,6 +348,7 @@ class FirthCompiler {
             let conditionalElt = {
                 type: "Conditional",
                 token: tokens.shift(),
+                conditionCount: this.conditional++,
                 trueBranch : [],
                 falseBranch : [],
             };
@@ -358,6 +369,42 @@ class FirthCompiler {
                 conditionalElt.error = "Expected 'end' to close conditional"
             }
             return conditionalElt;
+        }
+    }
+
+    parseStop(tokens) {
+        if (tokens[0] === "stop") {
+            let currentLoop = this.loopStack[this.loopStack.length - 1];
+            let stopLoop = {
+                type: "Stop",
+                token: tokens.shift(),
+                loop: currentLoop
+            };
+            return stopLoop;
+        }
+    }
+
+    parseLoop(tokens) {
+        if (tokens[0] === "do") {
+            let loopElt = {
+                loopCount : this.loop++,
+                type: "Loop",
+                token: tokens.shift(),
+                body : [],
+            };
+
+            this.loopStack.push(loopElt);
+            while (tokens.length > 0 && tokens[0] !== "loop") {
+                loopElt.body.push(this.parseElement(tokens));
+            }
+            this.loopStack.pop();
+
+            if (tokens[0] === "loop") {
+                tokens.shift();
+            } else {
+                loopElt.error = "Expected 'loop' to close loop"
+            }
+            return loopElt;
         }
     }
 
@@ -385,6 +432,16 @@ class FirthCompiler {
         let def = this.parseFunctionDef(tokens);
         if (def) {
             return def;
+        }
+
+        let loop = this.parseLoop(tokens);
+        if (loop) {
+            return loop;
+        }
+
+        let stop = this.parseStop(tokens);
+        if (stop) {
+            return stop;
         }
 
         return {
@@ -415,33 +472,43 @@ class FirthCompiler {
                 this.codeGenForElement(elt, code);
             }
             code.push("RET\n");
-        } else if (element.type === "Zero") {
-            let conditionalNum = this.conditional++;
-            let trueLabel = "COND_" + conditionalNum;
-            let endLabel = "END_COND_" + conditionalNum;
+        } else if (element.type === "Conditional") {
+            let trueLabel = "COND_" + element.conditionCount;
+            let endLabel = "END_COND_" + element.conditionCount;
             code.push("SPOP\n")
             if (element.token === "zero?") {
                 code.push("BRZ ");
             } else {
                 code.push("BRP ");
             }
-            if (element.trueBranch.length > 0) {
-                code.push(trueLabel + "\n");
-            } else {
-                code.push(endLabel + "\n");
-            }
-            for (const elt of element.falseBranch) {
-                this.codeGenForElement(elt, code);
-            }
-            code.push("BRA " + endLabel + "\n");
-
-            if (element.trueBranch.length > 0) {
-                code.push(trueLabel + " ")
-                for (const elt of element.trueBranch) {
+            code.push(trueLabel + "\n");
+            if (element.falseBranch.length > 0) {
+                for (const elt of element.falseBranch) {
                     this.codeGenForElement(elt, code);
                 }
             }
-            code.push(endLabel + " ");
+            code.push("BRA " + endLabel + "\n");
+
+            code.push(trueLabel + " ")
+            if (element.trueBranch.length > 0) {
+                for (const elt of element.trueBranch) {
+                    this.codeGenForElement(elt, code);
+                }
+            } else {
+                code.push("NOOP\n");
+            }
+            code.push(endLabel + " NOOP\n");
+        } else if (element.type === "Loop") {
+            let startLabel = "LOOP_" + element.loopCount;
+            let endLabel = "END_LOOP_" + element.loopCount;
+            code.push(startLabel + " ");
+            for (const elt of element.body) {
+                this.codeGenForElement(elt, code);
+            }
+            code.push("BRA " + startLabel + "\n");
+            code.push(endLabel + " NOOP\n");
+        } else if (element.type === "Stop") {
+            code.push("BRA END_LOOP_" + element.loop.loopCount + "\n");
         }
     }
 
@@ -463,29 +530,13 @@ class FirthCompiler {
 }
 
 let lmsm = new LittleManStackMachine();
-lmsm.compileAndRun("" +
-    "8\n" +
-    "fib()\n" +
-    ".\n" +
-    "\n" +
-    "def fib()\n" +
-    "\n" +
-    "  dup\n" +
-    "  zero?\n" +
-    "    return\n" +
-    "  end\n" +
-    "\n" +
-    "  dup 1 -\n" +
-    "  zero?\n" +
-    "    return\n" +
-    "  end\n" +
-    "\n" +
-    "  dup 2 -\n" +
-    "  fib()\n" +
-    "\n" +
-    "  swap 1 -\n" +
-    "  fib()\n" +
-    "\n" +
-    "  +\n" +
-    "end")
+lmsm.compileAndRun(
+    `5 
+         do
+           .
+           2 -
+           dup positive? else
+             stop
+           end
+         loop`)
 console.log(lmsm.output)
