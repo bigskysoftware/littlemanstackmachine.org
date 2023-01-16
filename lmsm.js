@@ -213,10 +213,24 @@ class LMSMTokenizer {
         this.tokens.push(token);
     }
 
+    consumeComment() {
+        if (this.currentChar() === "#") {
+            while (this.hasMoreChars()) {
+                if (this.atNewLine()) {
+                    break;
+                }
+                this.consumeChar();
+            }
+            return true;
+        }
+    }
+
     tokenize() {
         this.consumeWhitespace();
         while (this.hasMoreChars()) {
-            this.consumeToken();
+            if (!this.consumeComment()) {
+                this.consumeToken();
+            }
             this.consumeWhitespace();
         }
         return this.tokens;
@@ -313,14 +327,14 @@ class LMSMAssembler {
 
             let baseValue = this.INSTRUCTIONS[instruction.token.value];
             if (baseValue === this.SYNTHETIC_INSTRUCTION) {
-                if (instruction.token === "DAT") {
+                if (instruction.token.value === "DAT") {
                     machineCode[instruction.offset] = resolvedArg;
-                } else if (instruction.token === "CALL") {
+                } else if (instruction.token.value === "CALL") {
                     machineCode[instruction.offset] = 400 + resolvedArg;
                     machineCode[instruction.offset + 1] = 920;
                     machineCode[instruction.offset + 2] = 910;
 
-                } else if (instruction.token === "SPUSHI") {
+                } else if (instruction.token.value === "SPUSHI") {
                     machineCode[instruction.offset] = 400 + resolvedArg;
                     machineCode[instruction.offset + 1] = 920;
 
@@ -333,7 +347,6 @@ class LMSMAssembler {
                 }
             }
         }
-
         return machineCode;
     }
 
@@ -341,11 +354,15 @@ class LMSMAssembler {
 
 class FirthCompiler {
 
+    // variables for label generation
     conditional = 1;
     loop = 1;
     variable = 1;
+
+    // loop stack so stop elements can resolve jump
     loopStack = [];
 
+    // basic operations in Firth
     OPS = {"+" : "SADD",
            "-" : "SSUB",
            "*" : "SMUL",
@@ -359,50 +376,92 @@ class FirthCompiler {
            "get" : "INP\nSPUSH",
            "." : "SDUP\nSPOP\nOUT"}
 
+    // syntax patterns
     FUNCTION_PATTERN = /^[a-zA-Z_]+\(\)$/
     VARIABLE_PATTERN = /^[a-zA-Z_]+$/
     VARIABLE_WRITE_PATTERN = /^[a-zA-Z_]+!$/
 
     compile(firthSource) {
-        let tokens = firthSource.trim().split(/\s+/);
-        let rootElements = this.parseFirthProgram(tokens);
+        let lmsmTokenizer = new LMSMTokenizer(firthSource);
+        this.tokens = lmsmTokenizer.tokenize();
+        let rootElements = this.parseFirthProgram();
         let assembly = this.codeGen(rootElements);
         return assembly
     }
 
-    parseFunctionCall(tokens) {
-        if (tokens[0] && tokens[0].match(this.FUNCTION_PATTERN)) {
+    currentToken(){
+        return this.tokens[0];
+    }
+
+    currentTokenValue(){
+        if (this.tokens[0]) {
+            return this.tokens[0].value;
+        }
+    }
+
+    hasMoreTokens(){
+        return this.tokens.length > 0;
+    }
+
+    takeToken(){
+        return this.tokens.shift();
+    }
+
+    currentTokenIsANumber() {
+        return !isNaN(this.tokens[0].value);
+    }
+
+    currentTokenIs(str) {
+        return this.tokens[0] && this.tokens[0].value === str;
+    }
+
+    currentTokenMatches(regex) {
+        return this.tokens[0] && this.tokens[0].value.match(regex);
+    }
+
+
+    parseFunctionCall() {
+        if (this.currentTokenMatches(this.FUNCTION_PATTERN)) {
+            let token = this.takeToken();
             return {
                 type: "FunctionCall",
-                functionName: tokens.shift(),
+                token:token,
+                functionName: token.value,
             }
         }
     }
 
-    parseInt(tokens) {
-        if (!isNaN(tokens[0])) {
+    parseInt() {
+        if (this.currentTokenIsANumber()) {
+            let token = this.takeToken();
             return {
                 type: "Number",
-                value: parseInt(tokens.shift()),
+                token: token,
+                value: parseInt(token.value),
             }
         }
     }
 
-    parseOp(tokens) {
-        if (this.OPS[tokens[0]]) {
+    parseOp() {
+        if (this.OPS[this.currentTokenValue()]) {
+            let token = this.takeToken();
             return {
                 type: "Op",
-                op: tokens.shift(),
+                token: token,
+                op: token.value,
             };
         }
     }
 
-    parseFunctionDef(tokens) {
-        if (tokens[0] === "def") {
+    parseFunctionDef() {
+        if (this.currentTokenMatches("def")) {
+            let defToken = this.takeToken();
+            let nameToken = this.takeToken(); // take name as well
             let functionDef = {
                 type: "FunctionDefinition",
-                token: tokens.shift(),
-                name: tokens.shift(),
+                token: defToken,
+                nameToken: nameToken,
+                name: nameToken.value,
                 body : [],
             };
 
@@ -410,12 +469,12 @@ class FirthCompiler {
                 functionDef.error = "Function names must end with ()"
             }
 
-            while (tokens.length > 0 && tokens[0] !== "end") {
-                functionDef.body.push(this.parseElement(tokens));
+            while (this.hasMoreTokens() && !this.currentTokenIs("end")) {
+                functionDef.body.push(this.parseElement());
             }
 
-            if (tokens[0] === "end") {
-                tokens.shift();
+            if (this.currentTokenIs("end")) {
+                this.takeToken();
             } else {
                 functionDef.error = "Expected 'end' to close function"
             }
@@ -423,28 +482,32 @@ class FirthCompiler {
         }
     }
 
-    parseConditional(tokens) {
-        if (tokens[0] === "zero?" || tokens[0] === "positive?") {
+    parseConditional() {
+        if (this.currentTokenIs("zero?") ||
+            this.currentTokenIs("positive?")) {
+            let token = this.takeToken();
+
             let conditionalElt = {
                 type: "Conditional",
-                token: tokens.shift(),
+                token: token,
+                conditionType: token.value,
                 conditionCount: this.conditional++,
                 trueBranch : [],
                 falseBranch : [],
             };
 
-            while (tokens.length > 0 && tokens[0] !== "end" && tokens[0] !== "else") {
-                conditionalElt.trueBranch.push(this.parseElement(tokens));
+            while (this.hasMoreTokens() && !this.currentTokenIs("end") && !this.currentTokenIs("else")) {
+                conditionalElt.trueBranch.push(this.parseElement());
             }
 
-            if (tokens[0] === "else") {
-                while (tokens.length > 0 && tokens[0] !== "end") {
-                    conditionalElt.falseBranch.push(this.parseElement(tokens));
+            if (this.currentTokenIs("else")) {
+                while (this.hasMoreTokens() && !this.currentTokenIs("end")) {
+                    conditionalElt.falseBranch.push(this.parseElement());
                 }
             }
 
-            if (tokens[0] === "end") {
-                tokens.shift();
+            if (this.currentTokenIs("end")) {
+                this.takeToken();
             } else {
                 conditionalElt.error = "Expected 'end' to close conditional"
             }
@@ -452,35 +515,35 @@ class FirthCompiler {
         }
     }
 
-    parseStop(tokens) {
-        if (tokens[0] === "stop") {
+    parseStop() {
+        if (this.currentTokenIs("stop")) {
             let currentLoop = this.loopStack[this.loopStack.length - 1];
             let stopLoop = {
                 type: "Stop",
-                token: tokens.shift(),
+                token: this.takeToken(),
                 loop: currentLoop
             };
             return stopLoop;
         }
     }
 
-    parseLoop(tokens) {
-        if (tokens[0] === "do") {
+    parseLoop() {
+        if (this.currentTokenIs("do")) {
             let loopElt = {
                 loopCount : this.loop++,
                 type: "Loop",
-                token: tokens.shift(),
+                token: this.takeToken(),
                 body : [],
             };
 
             this.loopStack.push(loopElt);
-            while (tokens.length > 0 && tokens[0] !== "loop") {
-                loopElt.body.push(this.parseElement(tokens));
+            while (this.hasMoreTokens() && !this.currentTokenIs("loop")) {
+                loopElt.body.push(this.parseElement());
             }
             this.loopStack.pop();
 
-            if (tokens[0] === "loop") {
-                tokens.shift();
+            if (this.currentTokenIs("loop")) {
+                this.takeToken()
             } else {
                 loopElt.error = "Expected 'loop' to close loop"
             }
@@ -488,15 +551,16 @@ class FirthCompiler {
         }
     }
 
-    parseVariableDeclaration(tokens) {
-        if (tokens[0] === "var") {
-            let varToken = tokens.shift();
-            let nameToken = tokens.shift();
+    parseVariableDeclaration() {
+        if (this.currentTokenIs("var")) {
+            let varToken = this.takeToken();
+            let nameToken = this.takeToken();
             let variableElt = {
                 variableCount : this.variable++,
                 type: "VariableDeclaration",
                 token: varToken,
-                name: nameToken,
+                nameToken: nameToken,
+                name: nameToken ? nameToken.value : null,
             };
 
             if (variableElt.name == null || !variableElt.name.match(this.VARIABLE_PATTERN)) {
@@ -506,38 +570,46 @@ class FirthCompiler {
         }
     }
 
-    parseVariableRead(tokens) {
-        if (tokens[0].match(this.VARIABLE_PATTERN)) {
+    parseVariableRead() {
+        if (this.currentTokenMatches(this.VARIABLE_PATTERN)) {
             return {
                 type: "VariableRead",
-                token: tokens.shift(),
+                token: this.takeToken(),
             }
         }
     }
 
-    parseVariableWrite(tokens) {
-        if (tokens[0].match(this.VARIABLE_WRITE_PATTERN)) {
+    parseVariableWrite() {
+        if (this.currentTokenMatches(this.VARIABLE_WRITE_PATTERN)) {
             return {
                 type: "VariableWrite",
-                token: tokens.shift(),
+                token: this.takeToken(),
             }
         }
     }
 
-    parseAssembly(tokens) {
-        if (tokens[0] === "asm") {
+    parseAssembly() {
+        if (this.currentTokenIs("asm")) {
             let asmElt = {
                 type: "Assembly",
-                token: tokens.shift(),
+                token: this.takeToken(),
                 assembly: []
             };
 
-            while (tokens.length > 0 && tokens[0] !== "end") {
-                asmElt.assembly.push(tokens.shift());
+            var line = null;
+            while (this.hasMoreTokens() && !this.currentTokenIs("end")) {
+                let currentToken = this.takeToken();
+                if (line === null) {
+                    line = currentToken.line
+                } else if(line !== currentToken.line) {
+                    line = currentToken.line;
+                    asmElt.assembly.push("\n"); // pass newline through
+                }
+                asmElt.assembly.push(currentToken.value);
             }
 
-            if (tokens[0] === "end") {
-                tokens.shift();
+            if (this.currentTokenIs("end")) {
+                this.takeToken();
             } else {
                 asmElt.error = "Expected 'end' to close asm"
             }
@@ -546,82 +618,82 @@ class FirthCompiler {
     }
 
 
-    parseElement(tokens) {
-        let elt = this.parseInt(tokens);
+    parseElement() {
+        let elt = this.parseInt();
         if (elt) {
             return elt;
         }
 
-        let op = this.parseOp(tokens);
+        let op = this.parseOp();
         if (op) {
             return op;
         }
 
-        let conditional = this.parseConditional(tokens);
+        let conditional = this.parseConditional();
         if (conditional) {
             return conditional;
         }
 
-        let call = this.parseFunctionCall(tokens);
+        let call = this.parseFunctionCall();
         if (call) {
             return call;
         }
 
-        let def = this.parseFunctionDef(tokens);
+        let def = this.parseFunctionDef();
         if (def) {
             return def;
         }
 
-        let loop = this.parseLoop(tokens);
+        let loop = this.parseLoop();
         if (loop) {
             return loop;
         }
 
-        let stop = this.parseStop(tokens);
+        let stop = this.parseStop();
         if (stop) {
             return stop;
         }
 
-        let asm = this.parseAssembly(tokens);
+        let asm = this.parseAssembly();
         if (asm) {
             return asm;
         }
 
-        let variableRead = this.parseVariableRead(tokens);
+        let variableRead = this.parseVariableRead();
         if (variableRead) {
             return variableRead;
         }
 
-        let variableWrite = this.parseVariableWrite(tokens);
+        let variableWrite = this.parseVariableWrite();
         if (variableWrite) {
             return variableWrite;
         }
 
         return {
             type: "ERROR",
-            message: "Unknown token : " + tokens.shift()
+            message: "Unknown token : " + this.takeToken()
         };
     }
 
 
-    parseFirthProgram(tokens) {
+    parseFirthProgram() {
         let program = [];
-        let varDeclaration = this.parseVariableDeclaration(tokens);
+        let varDeclaration = this.parseVariableDeclaration();
         while (varDeclaration != null) {
             program.push(varDeclaration);
-            varDeclaration = this.parseVariableDeclaration(tokens);
+            varDeclaration = this.parseVariableDeclaration();
         }
-        let restOfProgram = this.parseElements(tokens);
+        let restOfProgram = this.parseElements();
         for (const elt of restOfProgram) {
             program.push(elt);
         }
         return program;
     }
 
-    parseElements(tokens) {
+    parseElements() {
         let elements = [];
-        while (tokens.length > 0) {
-            elements.push(this.parseElement(tokens));
+        while (this.hasMoreTokens()) {
+            elements.push(this.parseElement());
         }
         return elements;
     }
@@ -643,7 +715,7 @@ class FirthCompiler {
             let trueLabel = "COND_" + element.conditionCount;
             let endLabel = "END_COND_" + element.conditionCount;
             code.push("SPOP\n")
-            if (element.token === "zero?") {
+            if (element.conditionType === "zero?") {
                 code.push("BRZ ");
             } else {
                 code.push("BRP ");
@@ -677,9 +749,10 @@ class FirthCompiler {
         } else if (element.type === "Stop") {
             code.push("BRA END_LOOP_" + element.loop.loopCount + "\n");
         } else if (element.type === "VariableRead") {
-            code.push("LDA " + element.token + "\n");
+            code.push("LDA " + element.token.value + "\n");
         } else if (element.type === "VariableWrite") {
-            let variableName = element.token.substring(0, element.token.length - 1);
+            let varName = element.token.value;
+            let variableName = varName.substring(0, varName.length - 1);
             code.push("STA " + variableName + "\n");
         } else if (element.type === "VariableDeclaration") {
             code.push(element.name + " DAT 0\n");
@@ -712,7 +785,32 @@ class FirthCompiler {
 }
 
 let lmsm = new LittleManStackMachine();
-lmsm.assembleAndRun(
-    `LDI 22
-          OUT`)
-console.log(lmsm.output)
+lmsm.compileAndRun(
+    `8
+fib()
+.
+
+##############################################################################
+## fib() 
+##    expects a number n on the stack, leaves the nth fib on the stack
+##############################################################################
+def fib()
+
+  dup
+  zero?
+    return
+  end
+
+  dup 1 -
+  zero?
+    return
+  end
+
+  dup 2 -
+  fib()
+
+  swap 1 -
+  fib()
+
+  +
+end`)
