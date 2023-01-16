@@ -149,6 +149,81 @@ class LittleManStackMachine {
 
 }
 
+class LMSMTokenizer {
+
+    offset = 0
+    line = 1
+    lineOffset = 0
+    tokens = []
+
+    constructor(str) {
+        this.str = str
+    }
+
+    consumeWhitespace() {
+        while (this.hasMoreChars()) {
+            if (this.atSpace()) {
+                this.offset++;
+                this.lineOffset++;
+            }else if (this.atNewLine()) {
+                this.offset++;
+                this.line++;
+                this.lineOffset = 0;
+            } else {
+                break;
+            }
+        }
+    }
+
+    hasMoreChars() {
+        return this.offset < this.str.length;
+    }
+
+    atNewLine() {
+        return this.currentChar() === "\n";
+    }
+
+    atSpace() {
+        return this.currentChar() === " " || this.currentChar() === "\t";
+    }
+
+    currentChar() {
+        return this.str[this.offset];
+    }
+
+    consumeChar() {
+        let current = this.currentChar();
+        this.offset++;
+        return current;
+    }
+
+    consumeToken() {
+        let token = {
+            offset:this.offset,
+            line:this.line,
+            lineOffset: this.lineOffset,
+            value: this.consumeChar()
+        }
+        while (this.hasMoreChars()) {
+            if (this.atNewLine() || this.atSpace()) {
+                break;
+            }
+            token.value += this.consumeChar()
+        }
+        this.tokens.push(token);
+    }
+
+    tokenize() {
+        this.consumeWhitespace();
+        while (this.hasMoreChars()) {
+            this.consumeToken();
+            this.consumeWhitespace();
+        }
+        return this.tokens;
+    }
+
+}
+
 class LMSMAssembler {
 
     SYNTHETIC_INSTRUCTION = -1;
@@ -187,7 +262,8 @@ class LMSMAssembler {
     ARG_INSTRUCTIONS = ["ADD", "SUB", "LDA", "STA", "BRA", "BRZ", "BRP", "DAT", "LDI", "CALL", "SPUSHI"]
 
     assemble(asmSource) {
-        let tokens = asmSource.trim().split(/\s+/);
+        let lmsmTokenizer = new LMSMTokenizer(asmSource);
+        let tokens = lmsmTokenizer.tokenize();
         let instructions = []
         let labelsToInstructions = {}
         let offset = 0;
@@ -196,24 +272,24 @@ class LMSMAssembler {
             let instruction = {offset:offset};
 
             // label
-            if (this.INSTRUCTIONS[token] == null) {
-                instruction.label = token;
+            if (this.INSTRUCTIONS[token.value] == null) {
+                instruction.label = token.value;
                 labelsToInstructions[instruction.label] = instruction;
                 token = tokens.shift()
             }
 
             instruction.token = token;
 
-            if (this.ARG_INSTRUCTIONS.includes(instruction.token)) {
+            if (this.ARG_INSTRUCTIONS.includes(token.value)) {
                 token = tokens.shift()
                 instruction.arg = token;
             }
 
             instructions.push(instruction);
 
-            if (instruction.token === "CALL") {
+            if (instruction.token.value === "CALL") {
                 offset = offset + 3;
-            } else if (instruction.token === "SPUSHI") {
+            } else if (instruction.token.value === "SPUSHI") {
                 offset = offset + 2;
             } else {
                 offset++;
@@ -224,18 +300,18 @@ class LMSMAssembler {
         for (const instruction of instructions) {
             let resolvedArg = null;
             if(instruction.arg){
-                if (isNaN(instruction.arg)) {
-                    let targetInstruction = labelsToInstructions[instruction.arg];
+                if (isNaN(instruction.arg.value)) {
+                    let targetInstruction = labelsToInstructions[instruction.arg.value];
                     if (targetInstruction == null) {
-                        throw "Cannot find label " + instruction.arg;
+                        throw "Cannot find label " + instruction.arg.value;
                     }
                     resolvedArg = targetInstruction.offset;
                 } else {
-                    resolvedArg = parseInt(instruction.arg);
+                    resolvedArg = parseInt(instruction.arg.value);
                 }
             }
 
-            let baseValue = this.INSTRUCTIONS[instruction.token];
+            let baseValue = this.INSTRUCTIONS[instruction.token.value];
             if (baseValue === this.SYNTHETIC_INSTRUCTION) {
                 if (instruction.token === "DAT") {
                     machineCode[instruction.offset] = resolvedArg;
@@ -250,7 +326,7 @@ class LMSMAssembler {
 
                 }
             } else {
-                if (this.ARG_INSTRUCTIONS.includes(instruction.token)) {
+                if (this.ARG_INSTRUCTIONS.includes(instruction.token.value)) {
                     machineCode[instruction.offset] = baseValue + resolvedArg;
                 } else {
                     machineCode[instruction.offset] = baseValue;
@@ -636,10 +712,7 @@ class FirthCompiler {
 }
 
 let lmsm = new LittleManStackMachine();
-lmsm.compileAndRun(
-    `var x
-          asm
-            LDI 20
-            OUT
-          end`)
+lmsm.assembleAndRun(
+    `LDI 22
+          OUT`)
 console.log(lmsm.output)

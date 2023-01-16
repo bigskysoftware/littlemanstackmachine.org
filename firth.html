@@ -33,18 +33,18 @@
     an interesting, alternative way to think about programming.</p>
 
     <p>
-        The programming language for the LSMS is called "Firth", a nod to the once-popular but largely forgotten
-        programming language <a href="https://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>. Like
-        Forth, Firth has a <a href="https://en.wikipedia.org/wiki/Reverse_Polish_notation">Reverse Polish notation</a>
-        syntax that may appear a little strange at first, but that grows on you.
+        The programming language for the LSMS is called "Firth", which is, to an extent, based on the
+        <a href="https://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a> programming language. Similar to
+        Forth, Firth mainly uses a <a href="https://en.wikipedia.org/wiki/Reverse_Polish_notation">Reverse Polish notation</a>
+        style of syntax, and the concept of an implicit stack.
     </p>
 
     <p>
-        A Firth compiler should be provided with any implementation of the LMSM, to show how a high-level programming
-        language can compile down to LMSM assembly.
+        It is recommended that a Firth compiler is provided with implementations of the LMSM, to show how a high-level
+        programming language can compile down to LMSM assembly.
     </p>
 
-    <h2>An Example Program: Squaring A Number</h2>
+    <h2>An Example Firth Program: Squaring A Number</h2>
 
     <p>
         Before we delve into the details of Firth, let's look at an example program, based on the <code>SQUARE</code>
@@ -63,7 +63,7 @@
     </pre>
 
     <p>
-        This probably looks a little strange, but lets go through it line by line.
+        This program probably looks a little strange to you, so let's go through it line by line.
     </p>
 
     <p>
@@ -72,12 +72,12 @@
 
     <p>
         The second line, <code>square()</code>, invokes the function <code>square</code>.  Note that the argument to
-        the <code>square</code> function is passed <em>implicitly</em>, on the value stack.  This may seem strange, but
-        this is how Forth and many stack-based programming languages work!
+        the <code>square</code> function is passed <em>implicitly</em>, on the value stack.  A little crazy but
+        this is how Forth and many stack-based programming languages work.
     </p>
 
     <p>
-        The third line, <code>.</code>, prints the top of the stack out.  This syntax is taken directly from Forth.
+        The third line, <code>.</code>, prints the top of the stack out.
     </p>
 
     <p>
@@ -87,8 +87,8 @@
     </p>
 
     <p>
-        This is the "Reverse Polish notation" nature of Firth.  A more traditional programming language might look like
-        this:
+        This is the "Reverse Polish notation" nature of Firth.  In a more traditional programming language, this
+        calculation would look something like this:
     </p>
 
     <pre>
@@ -98,27 +98,32 @@
     </pre>
 
     <p>
-        Where the multiplication operator uses <a href="https://en.wikipedia.org/wiki/Infix_notation">Infix notation</a>.
-        But this is not how Firth works: it's a stack language and it's good for people to see a different way of thinking
-        about computation.
+        In this code the multiplication operator uses <a href="https://en.wikipedia.org/wiki/Infix_notation">Infix notation</a>.
+        Firth, instead, uses the RPN style, where you "push" values onto a stack and then apply operations to them.
     </p>
 
     <p>
         Note that there is no explicit <code>return</code> in the definition of the <code>square()</code>
         function.  There is actually support for the <code>return</code> keyword in Firth, but it isn't necessary here:
         the square value is computed by the body of the function and left on the value stack, so when the function returns
-        the return value is where it should be.  Hacky, but cool!
+        the return value is where it should be.
     </p>
 
     <p>
-      So that's a quick introduction to the Firth programming language.  Let's look at the elements that make it up
+        Kind of a hack, but it works, and this program will do what we want: ask the user for a number and then print
+        the square of it.
     </p>
 
-    <h2>Components Of The Firth Programming Langauge</h2>
+    <p>
+        So that's a quick introduction to the Firth programming language. Now let's look at all the elements of
+        the language in more detail.
+    </p>
+
+    <h2>Elements Of The Firth Programming Langauge</h2>
 
     <p>
         The Firth programming language consists of a set of <em>elements</em>.  Calling them "expressions" or "statements"
-        in the traditional sense of those terms is a little misleading, since values are stored on a stack, so we will
+        in the traditional sense of those terms is a little misleading since values are stored on a stack, so we will
         stick with the term "element".
     </p>
 
@@ -242,7 +247,7 @@
         <tbody>
         <tr>
             <td>
-                Pop Top Of Stack Off
+                Pop The Top Of The Stack
             </td>
             <td>
                 <code>pop</code>
@@ -346,27 +351,28 @@
 
     <p>
         If the condition is not true, the elements will execute an optional <code>else</code> block, if it is included,
-    otherwise they will do nothing.
+        otherwise they will do nothing.
     </p>
 
     <p>
-        Here is an example Firth program that asks the user for input and prints <code>1</code> if they enter
-        <code>0</code>, and <code>1</code> otherwise.
+        Here is a simple "inverter" example Firth program that asks the user for some input and then prints
+        <code>1</code> if the user enter<code>0</code> and <code>1</code> otherwise.
     </p>
     <pre>
   get
   zero?
-    1 .
+    1
   else
-    0 .
+    0
   end
+  .
     </pre>
 
     <h3>The Loop Element</h3>
 
     <p>
         Firth supports a simple loop that starts with the <code>do</code> keyword and ends with the <code>loop</code>
-        keyword.  A look can be exited with the <code>stop</code> keyword.
+        keyword.  A loop can be exited with the <code>stop</code> keyword.
     </p>
 
     <p>
@@ -393,7 +399,7 @@
     </code>
 
     <p>
-        Variables can be set by appending an exclaimation point to their name.  This will consume the top of the stack
+        Variables can be set by appending an exclamation point to their name.  This will consume the top of the stack
         and set the variable to the value.  The following program declares a variable <code>x</code>, saves user input
         into it, multiplies the variable by itself and then prints the result:
     </p>
@@ -433,7 +439,7 @@
     </p>
 
     <p>
-        Note that functions in Firth can call themselves recursively!
+        Note that functions in Firth can call themselves recursively.
     </p>
 
     <h3>Inline Assembly</h3>
@@ -459,7 +465,7 @@
 
     <p>
         Below is a recursive implementation of the <a href="https://en.wikipedia.org/wiki/Fibonacci_number">fibonacci</a>
-        function in Firth:
+        algorithm in Firth:
     </p>
 
     <pre>
