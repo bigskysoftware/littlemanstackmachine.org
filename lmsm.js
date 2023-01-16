@@ -448,6 +448,28 @@ class FirthCompiler {
         }
     }
 
+    parseAssembly(tokens) {
+        if (tokens[0] === "asm") {
+            let asmElt = {
+                type: "Assembly",
+                token: tokens.shift(),
+                assembly: []
+            };
+
+            while (tokens.length > 0 && tokens[0] !== "end") {
+                asmElt.assembly.push(tokens.shift());
+            }
+
+            if (tokens[0] === "end") {
+                tokens.shift();
+            } else {
+                asmElt.error = "Expected 'end' to close asm"
+            }
+            return asmElt;
+        }
+    }
+
+
     parseElement(tokens) {
         let elt = this.parseInt(tokens);
         if (elt) {
@@ -482,6 +504,11 @@ class FirthCompiler {
         let stop = this.parseStop(tokens);
         if (stop) {
             return stop;
+        }
+
+        let asm = this.parseAssembly(tokens);
+        if (asm) {
+            return asm;
         }
 
         let variableRead = this.parseVariableRead(tokens);
@@ -580,6 +607,8 @@ class FirthCompiler {
             code.push("STA " + variableName + "\n");
         } else if (element.type === "VariableDeclaration") {
             code.push(element.name + " DAT 0\n");
+        } else if (element.type === "Assembly") {
+            code.push(element.assembly.join(" ") + "\n");
         }
     }
 
@@ -609,7 +638,8 @@ class FirthCompiler {
 let lmsm = new LittleManStackMachine();
 lmsm.compileAndRun(
     `var x
-          10
-          x!
-          x .`)
+          asm
+            LDI 20
+            OUT
+          end`)
 console.log(lmsm.output)
