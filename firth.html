@@ -393,8 +393,8 @@
     </code>
 
     <p>
-        Variables can be set by appending an exclaimation point to them.  This will consume the top of the stack
-        and set the variable to it.  The following program declares a variable <code>x</code>, saves user input
+        Variables can be set by appending an exclaimation point to their name.  This will consume the top of the stack
+        and set the variable to the value.  The following program declares a variable <code>x</code>, saves user input
         into it, multiplies the variable by itself and then prints the result:
     </p>
 
@@ -405,6 +405,9 @@
         x x *
         .
     </pre>
+
+    <p>Variables must be declared first in Firth programs, and are global.  They cannot be declared within functions,
+    loops or conditionals.</p>
 
     <h3>Functions</h3>
 

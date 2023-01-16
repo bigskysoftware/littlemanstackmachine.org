@@ -267,6 +267,7 @@ class FirthCompiler {
 
     conditional = 1;
     loop = 1;
+    variable = 1;
     loopStack = [];
 
     OPS = {"+" : "SADD",
@@ -279,19 +280,22 @@ class FirthCompiler {
            "swap" : "SSWAP",
            "drop" : "SDROP",
            "return" : "RET",
+           "get" : "INP\nSPUSH",
            "." : "SDUP\nSPOP\nOUT"}
 
     FUNCTION_PATTERN = /^[a-zA-Z_]+\(\)$/
+    VARIABLE_PATTERN = /^[a-zA-Z_]+$/
+    VARIABLE_WRITE_PATTERN = /^[a-zA-Z_]+!$/
 
     compile(firthSource) {
         let tokens = firthSource.trim().split(/\s+/);
-        let rootElements = this.parseElements(tokens);
+        let rootElements = this.parseFirthProgram(tokens);
         let assembly = this.codeGen(rootElements);
         return assembly
     }
 
     parseFunctionCall(tokens) {
-        if (tokens[0].match(this.FUNCTION_PATTERN)) {
+        if (tokens[0] && tokens[0].match(this.FUNCTION_PATTERN)) {
             return {
                 type: "FunctionCall",
                 functionName: tokens.shift(),
@@ -408,6 +412,42 @@ class FirthCompiler {
         }
     }
 
+    parseVariableDeclaration(tokens) {
+        if (tokens[0] === "var") {
+            let varToken = tokens.shift();
+            let nameToken = tokens.shift();
+            let variableElt = {
+                variableCount : this.variable++,
+                type: "VariableDeclaration",
+                token: varToken,
+                name: nameToken,
+            };
+
+            if (variableElt.name == null || !variableElt.name.match(this.VARIABLE_PATTERN)) {
+                variableElt.error = "Expected variable to have a name"
+            }
+            return variableElt;
+        }
+    }
+
+    parseVariableRead(tokens) {
+        if (tokens[0].match(this.VARIABLE_PATTERN)) {
+            return {
+                type: "VariableRead",
+                token: tokens.shift(),
+            }
+        }
+    }
+
+    parseVariableWrite(tokens) {
+        if (tokens[0].match(this.VARIABLE_WRITE_PATTERN)) {
+            return {
+                type: "VariableWrite",
+                token: tokens.shift(),
+            }
+        }
+    }
+
     parseElement(tokens) {
         let elt = this.parseInt(tokens);
         if (elt) {
@@ -444,12 +484,36 @@ class FirthCompiler {
             return stop;
         }
 
+        let variableRead = this.parseVariableRead(tokens);
+        if (variableRead) {
+            return variableRead;
+        }
+
+        let variableWrite = this.parseVariableWrite(tokens);
+        if (variableWrite) {
+            return variableWrite;
+        }
+
         return {
             type: "ERROR",
             message: "Unknown token : " + tokens.shift()
         };
     }
 
+
+    parseFirthProgram(tokens) {
+        let program = [];
+        let varDeclaration = this.parseVariableDeclaration(tokens);
+        while (varDeclaration != null) {
+            program.push(varDeclaration);
+            varDeclaration = this.parseVariableDeclaration(tokens);
+        }
+        let restOfProgram = this.parseElements(tokens);
+        for (const elt of restOfProgram) {
+            program.push(elt);
+        }
+        return program;
+    }
 
     parseElements(tokens) {
         let elements = [];
@@ -509,6 +573,13 @@ class FirthCompiler {
             code.push(endLabel + " NOOP\n");
         } else if (element.type === "Stop") {
             code.push("BRA END_LOOP_" + element.loop.loopCount + "\n");
+        } else if (element.type === "VariableRead") {
+            code.push("LDA " + element.token + "\n");
+        } else if (element.type === "VariableWrite") {
+            let variableName = element.token.substring(0, element.token.length - 1);
+            code.push("STA " + variableName + "\n");
+        } else if (element.type === "VariableDeclaration") {
+            code.push(element.name + " DAT 0\n");
         }
     }
 
@@ -516,12 +587,18 @@ class FirthCompiler {
         let code = [];
 
         // generate non-functions first
-        for (const element of elements.filter(element => element.type !== "FunctionDefinition")) {
+        for (const element of elements.filter(element => element.type !== "FunctionDefinition" && element.type !== "VariableDeclaration")) {
             this.codeGenForElement(element, code);
         }
         code.push("HLT\n"); // End program with a halt
-        // generate =functions second
+
+        // generate functions second
         for (const element of elements.filter(element => element.type === "FunctionDefinition")) {
+            this.codeGenForElement(element, code);
+        }
+
+        // allocated variable memory third
+        for (const element of elements.filter(element => element.type === "VariableDeclaration")) {
             this.codeGenForElement(element, code);
         }
 
@@ -531,12 +608,8 @@ class FirthCompiler {
 
 let lmsm = new LittleManStackMachine();
 lmsm.compileAndRun(
-    `5 
-         do
-           .
-           2 -
-           dup positive? else
-             stop
-           end
-         loop`)
+    `var x
+          10
+          x!
+          x .`)
 console.log(lmsm.output)
