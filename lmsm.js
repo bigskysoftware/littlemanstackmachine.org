@@ -14,6 +14,8 @@ class LittleManStackMachine {
         return_address_pointer:99
     }
 
+    error = null
+
     inputCallback = function() {
         let returnVal = prompt("Please enter a number");
         return parseInt(returnVal);
@@ -53,8 +55,11 @@ class LittleManStackMachine {
 
     run() {
         this.status = "Running";
-        while (this.status !== "Stopped" && this.status !== "Waiting") {
+        while (this.status === "Running") {
             this.executeCurrentInstruction();
+        }
+        if (this.status === "Error") {
+            console.error("Error : " + this.error);
         }
     }
 
@@ -81,8 +86,6 @@ class LittleManStackMachine {
             if (this.registers.accumulator >= 0) {
                 this.registers.program_counter = instruction - 800;
             }
-        } else if (instruction === 900) {
-            // NOOP - do nothing
         } else if (instruction === 901) {
             this.status = "Waiting";
             let that = this;
@@ -149,6 +152,22 @@ class LittleManStackMachine {
         } else {
             this.status = "Stopped";
         }
+
+        if (this.registers.stack_pointer < 100) {
+            this.status = "Error";
+            this.error = "Value Stack Overflow";
+        }
+
+        if (this.registers.stack_pointer <= this.registers.return_address_pointer) {
+            this.status = "Error";
+            this.error = "Stack Collision";
+        }
+
+        if (199 < this.registers.return_address_pointer) {
+            this.status = "Error";
+            this.error = "Stack Overflow";
+        }
+
         if (this.registers.accumulator > 999) {
             this.registers.accumulator = 999;
         }
@@ -260,7 +279,6 @@ class LMSMAssembler {
         "BRA": 600,
         "BRZ": 700,
         "BRP": 800,
-        "NOOP": 900,
         "INP": 901,
         "OUT": 902,
         "HLT": 0,
@@ -763,9 +781,9 @@ class FirthCompiler {
                     this.codeGenForElement(elt, code);
                 }
             } else {
-                code.push("NOOP\n");
+                code.push("ADD ZERO\n");
             }
-            code.push(endLabel + " NOOP\n");
+            code.push(endLabel + " ADD ZERO\n");
         } else if (element.type === "Loop") {
             let startLabel = "LOOP_" + element.loopCount;
             let endLabel = "END_LOOP_" + element.loopCount;
@@ -774,7 +792,7 @@ class FirthCompiler {
                 this.codeGenForElement(elt, code);
             }
             code.push("BRA " + startLabel + "\n");
-            code.push(endLabel + " NOOP\n");
+            code.push(endLabel + " ADD ZERO\n");
         } else if (element.type === "Stop") {
             code.push("BRA END_LOOP_" + element.loop.loopCount + "\n");
         } else if (element.type === "VariableRead") {
@@ -797,7 +815,7 @@ class FirthCompiler {
         for (const element of elements.filter(element => element.type !== "FunctionDefinition" && element.type !== "VariableDeclaration")) {
             this.codeGenForElement(element, code);
         }
-        code.push("HLT\n"); // End program with a halt
+        code.push("ZERO HLT\n"); // End program with a halt, labeled zero to support no-ops
 
         // generate functions second
         for (const element of elements.filter(element => element.type === "FunctionDefinition")) {
@@ -814,6 +832,8 @@ class FirthCompiler {
             code.push(label + " DAT " + this.overflowValues[label]);
         }
 
-        return code.join("");
+        let s = code.join("");
+        console.log(s);
+        return s;
     }
 }
