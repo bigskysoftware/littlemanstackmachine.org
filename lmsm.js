@@ -14,10 +14,14 @@ class LittleManStackMachine {
         return_address_pointer:99
     }
 
+    inputCallback = function() {
+        let returnVal = prompt("Please enter a number");
+        return parseInt(returnVal);
+    }
+
     compileAndRun(src) {
         let compiler = new FirthCompiler();
         let compiledAssembly = compiler.compile(src);
-        console.log(compiledAssembly);
         let assembler = new LMSMAssembler();
         let machine_code = assembler.assemble(compiledAssembly);
         this.load(machine_code);
@@ -48,7 +52,8 @@ class LittleManStackMachine {
     }
 
     run() {
-        while (this.status !== "Stopped") {
+        this.status = "Running";
+        while (this.status !== "Stopped" && this.status !== "Waiting") {
             this.executeCurrentInstruction();
         }
     }
@@ -79,7 +84,12 @@ class LittleManStackMachine {
         } else if (instruction === 900) {
             // NOOP - do nothing
         } else if (instruction === 901) {
-            // TODO
+            this.status = "Waiting";
+            let that = this;
+            Promise.resolve(this.inputCallback()).then(function(value) {
+                that.registers.accumulator = value;
+                that.run();
+            })
         } else if (instruction === 902) {
             console.log(this.registers.accumulator + " ");
             this.output.push(this.registers.accumulator);
@@ -807,34 +817,3 @@ class FirthCompiler {
         return code.join("");
     }
 }
-
-let lmsm = new LittleManStackMachine();
-lmsm.compileAndRun(
-    `8
-fib()
-.
-
-##############################################################################
-## fib() 
-##    expects a number n on the stack, leaves the nth fib on the stack
-##############################################################################
-def fib()
-
-  dup
-  zero?
-    return
-  end
-
-  dup 1 -
-  zero?
-    return
-  end
-
-  dup 2 -
-  fib()
-
-  swap 1 -
-  fib()
-
-  +
-end`)
