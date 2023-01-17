@@ -2,11 +2,241 @@
 <body>
 <head>
     <title>Test Suite For lmsm.js</title>
+    <script src="lmsm.js"></script>
 </head>
+
 <script>
-    // The worlds jankiest test suite framework
+    //=================================================
+    // Tests Helpers
+    //=================================================
+    function assertEqual(value, expected, msg) {
+        if (value !== expected) {
+            throw msg || "Expected " + value + " to equal " + expected;
+        }
+    }
+
+    function assertArraysEqual(value, expected, msg) {
+        if (value.length !== expected.length) {
+            throw msg || "Expected " + value + " to equal " + expected;
+        }
+        for (let i = 0; i < value.length; i++) {
+            if (value[i] !== expected[i]) {
+                throw msg || "Expected " + value + " to equal " + expected;
+            }
+        }
+    }
+</script>
+
+<script>
+    //=================================================
+    // Tokenizer Tests
+    //=================================================
+    function testTokenizerTokenizesEmptyString(){
+        let tok = new LMSMTokenizer("");
+        assertEqual(tok.tokenize().length, 0);
+    }
+
+    function testTokenizerTokenizesWhiteSpaceOnly(){
+        let tok = new LMSMTokenizer("    ");
+        assertEqual(tok.tokenize().length, 0);
+    }
+
+    function testTokenizerIgnoresComments(){
+        let tok = new LMSMTokenizer("# a comment");
+        assertEqual(tok.tokenize().length, 0);
+    }
+
+    function testTokenizerTokenizesBasicToken(){
+        let tok = new LMSMTokenizer("foo");
+        let tokens = tok.tokenize();
+        assertEqual(tokens.length, 1);
+        assertEqual(tokens[0].value, "foo");
+    }
+
+    function testTokenizerTokenizesTwoBasicToken(){
+        let tok = new LMSMTokenizer("foo bar");
+        let tokens = tok.tokenize();
+        assertEqual(tokens.length, 2);
+        assertEqual(tokens[0].value, "foo");
+        assertEqual(tokens[1].value, "bar");
+    }
+
+    function testTokenizerGetsOffsetsRight(){
+        let tok = new LMSMTokenizer("foo bar");
+        let tokens = tok.tokenize();
+        assertEqual(tokens.length, 2);
+        assertEqual(tokens[0].offset, 0);
+        assertEqual(tokens[1].offset, 4);
+    }
+
+    function testTokenizerGetsLinesRight(){
+        let tok = new LMSMTokenizer("foo\n bar");
+        let tokens = tok.tokenize();
+        assertEqual(tokens.length, 2);
+        assertEqual(tokens[0].line, 1);
+        assertEqual(tokens[1].line, 2);
+    }
+
+    function testTokenizerGetsLineOffsetRight(){
+        let tok = new LMSMTokenizer("foo\n bar");
+        let tokens = tok.tokenize();
+        assertEqual(tokens.length, 2);
+        assertEqual(tokens[0].lineOffset, 0);
+        assertEqual(tokens[1].lineOffset, 1);
+    }
 
 </script>
 
+<script>
+    //=================================================
+    // End-To-End Tests
+    //=================================================
+    function testEndToEndBasicAssemblyProgramRuns(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.assembleAndRun("LDI 1 OUT")
+        assertEqual(lmsm.output[0], 1);
+    }
+
+    function testEndToEndBasicFirthProgramRuns(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.compileAndRun("1 .")
+        assertEqual(lmsm.output[0], 1);
+    }
+
+    function testEndToEndZeroConditionalWorks(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.compileAndRun(`
+        0
+        zero?
+          1 . pop
+        else
+          2 . pop
+        end
+        1
+        zero?
+          1 . pop
+        else
+          2 . pop
+        end
+        `)
+        assertArraysEqual(lmsm.output, [1, 2]);
+    }
+
+    function testEndToEndPositiveConditionalWorks(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.compileAndRun(`
+        -1
+        positive?
+          1 . pop
+        else
+          2 . pop
+        end
+        0
+        positive?
+          1 . pop
+        else
+          2 . pop
+        end
+        1
+        positive?
+          1 . pop
+        else
+          2 . pop
+        end
+        `)
+        assertArraysEqual(lmsm.output, [2, 1, 1]);
+    }
+
+    function testEndToEndFirthLoopRuns(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.compileAndRun(`
+        5
+        do
+          .
+          1 -
+          dup zero?
+            stop
+          end
+        loop
+        `)
+        assertArraysEqual(lmsm.output, [5, 4, 3, 2, 1]);
+    }
+
+    function testEndToEndVariablesWork(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.compileAndRun(`
+        var x
+        5 x!
+        x .
+        `)
+        assertArraysEqual(lmsm.output, [5]);
+    }
+
+    function testEndToEndVariablesWork(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.compileAndRun(`
+        var x
+        5 x!
+        x .
+        `)
+        assertArraysEqual(lmsm.output, [5]);
+    }
+
+    function testEndToEndFibFirthProgramRuns(){
+        let lmsm = new LittleManStackMachine();
+        lmsm.compileAndRun(`8
+                            fib()
+                            .
+
+                            ##############################################################################
+                            ## fib()
+                            ##    expects a number n on the stack, leaves the nth fib on the stack
+                            ##############################################################################
+                            def fib()
+
+                              dup
+                              zero?
+                                return
+                              end
+
+                              dup 1 -
+                              zero?
+                                return
+                              end
+
+                              dup 2 -
+                              fib()
+
+                              swap 1 -
+                              fib()
+
+                              +
+                            end`)
+        assertEqual(lmsm.output[0], 21);
+    }
+</script>
+
+<h1>Test Results:</h1>
+<ul id="test-results">
+
+</ul>
+
+<script>
+    //=================================================
+    // Tests Harness
+    //=================================================
+    for (const symbol in window) {
+        let testResults = document.getElementById("test-results");
+        if (symbol.startsWith("test")) {
+            try {
+                window[symbol]();
+                testResults.innerHTML += `<li style='color: darkgreen'>PASSED: ${symbol}()</li>`
+            } catch (e) {
+                console.log(e)
+                testResults.innerHTML += `<li style='color: red'>FAILED: ${symbol}() - ${e}</li>`
+            }
+        }
+    }
+</script>
 </body>
 </html>

@@ -244,9 +244,9 @@ class LMSMAssembler {
     INSTRUCTIONS = {
         "ADD": 100,
         "SUB": 200,
-        "LDA": 300,
+        "STA": 300,
         "LDI": 400,
-        "STA": 500,
+        "LDA": 500,
         "BRA": 600,
         "BRZ": 700,
         "BRP": 800,
@@ -358,9 +358,17 @@ class FirthCompiler {
     conditional = 1;
     loop = 1;
     variable = 1;
+    overflow = 1;
 
     // loop stack so stop elements can resolve jump
     loopStack = [];
+
+    // literal number values that require named DAT slots to hold
+    overflowValues = {};
+
+    // statement terminators
+    KEYWORDS = ["end", "loop", "else"];
+
 
     // basic operations in Firth
     OPS = {"+" : "SADD",
@@ -371,15 +379,16 @@ class FirthCompiler {
            "min" : "SMIN",
            "dup" : "SDUP",
            "swap" : "SSWAP",
+           "pop" : "SPOP",
            "drop" : "SDROP",
            "return" : "RET",
            "get" : "INP\nSPUSH",
            "." : "SDUP\nSPOP\nOUT"}
 
     // syntax patterns
-    FUNCTION_PATTERN = /^[a-zA-Z_]+\(\)$/
-    VARIABLE_PATTERN = /^[a-zA-Z_]+$/
-    VARIABLE_WRITE_PATTERN = /^[a-zA-Z_]+!$/
+    FUNCTION_PATTERN = /^[a-zA-Z][a-zA-Z_]+\(\)$/
+    VARIABLE_PATTERN = /^[a-zA-Z][a-zA-Z_]+$/
+    VARIABLE_WRITE_PATTERN = /^[a-zA-Z][a-zA-Z_]+!$/
 
     compile(firthSource) {
         let lmsmTokenizer = new LMSMTokenizer(firthSource);
@@ -419,6 +428,9 @@ class FirthCompiler {
         return this.tokens[0] && this.tokens[0].value.match(regex);
     }
 
+    currentTokenIsKeyword() {
+        return this.KEYWORDS.includes(this.tokens[0]);
+    }
 
     parseFunctionCall() {
         if (this.currentTokenMatches(this.FUNCTION_PATTERN)) {
@@ -501,6 +513,7 @@ class FirthCompiler {
             }
 
             if (this.currentTokenIs("else")) {
+                this.takeToken(); // consume else
                 while (this.hasMoreTokens() && !this.currentTokenIs("end")) {
                     conditionalElt.falseBranch.push(this.parseElement());
                 }
@@ -571,7 +584,7 @@ class FirthCompiler {
     }
 
     parseVariableRead() {
-        if (this.currentTokenMatches(this.VARIABLE_PATTERN)) {
+        if (this.currentTokenMatches(this.VARIABLE_PATTERN) && !this.currentTokenIsKeyword()) {
             return {
                 type: "VariableRead",
                 token: this.takeToken(),
@@ -616,7 +629,6 @@ class FirthCompiler {
             return asmElt;
         }
     }
-
 
     parseElement() {
         let elt = this.parseInt();
@@ -700,7 +712,14 @@ class FirthCompiler {
 
     codeGenForElement(element, code) {
         if (element.type === "Number") {
-            code.push("SPUSHI " + element.value + "\n");
+            if (0 <= element.value && element.value <= 99) {
+                code.push("SPUSHI " + element.value + "\n");
+            } else {
+                let overflowSlotLabel = "_OVERFLOW_" + this.overflow++;
+                this.overflowValues[overflowSlotLabel] = element.value;
+                code.push("LDA " + overflowSlotLabel + "\n");
+                code.push("SPUSH\n");
+            }
         } else if (element.type === "Op") {
             code.push(this.OPS[element.op] + "\n");
         } else if (element.type === "FunctionCall") {
@@ -778,6 +797,11 @@ class FirthCompiler {
         // allocated variable memory third
         for (const element of elements.filter(element => element.type === "VariableDeclaration")) {
             this.codeGenForElement(element, code);
+        }
+
+        // overflow literal values fourth
+        for (const label in this.overflowValues) {
+            code.push(label + " DAT " + this.overflowValues[label]);
         }
 
         return code.join("");
