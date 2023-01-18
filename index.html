@@ -46,7 +46,7 @@
     <p>
         Like the LMC, the LMSM models a simple <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von
         Neumann</a> computing machine and the execution cycle is identical to the LMC.  In order to better support
-        more computer topics that the LMC the LMSM adds the following functionality:
+        more computational topics that the LMC did, the LMSM adds the following functionality:
     </p>
 
     <ul>
@@ -57,10 +57,10 @@
             Two new registers are available:
             <ul>
                 <li>
-                    The <code>stack pointer</code> register that points to the top of the <em>value stack</em>.
+                    The <code>stack_pointer</code> register that points to the top of the <em>value stack</em>.
                 </li>
                 <li>
-                    The <code>return address pointer</code> register that points to the top of the <em>return address
+                    The <code>return_address_pointer</code> register that points to the top of the <em>return address
                     stack</em>.
                 </li>
             </ul>
@@ -71,7 +71,7 @@
         </li>
         <li>
             A new set of stack-related instructions are available for working with the two stacks available on the
-            LMSM
+            LMSM.
         </li>
         <li>
             Two "virtual" assembly instructions are available to make assembly coding on the LMSM a bit more pleasant.
@@ -121,12 +121,12 @@
         </li>
         <li>
             The <code>stack_pointer</code> register - a register that points to the memory location at the "top" of the
-            value stack.  This pointer starts at value 200 (meaning no stack exists) and is <em>decremented</em> as the
+            value stack.  This pointer starts at value 200 (meaning that the value stack is empty) and is <em>decremented</em> as the
             value stack grows.
         </li>
         <li>
             The <code>return_address_pointer</code> register - a register that points to the memory location at the "top" of the
-            return address stack.  This pointer starts at value 99 (meaning no the return address stack is empty) and it
+            return address stack.  This pointer starts at value 99 (meaning that the return address stack is empty) and it
             is <em>incremented</em> as the value stack grows.
         </li>
     </ul>
@@ -135,17 +135,22 @@
     <p>
         The LMSM has a total of 200 memory slots, double that of the LCM.  The memory is split into two sections: "lower"
         and "upper" segments. Traditional LMC instructions such as <code>ADD</code> operate on the lower memory segment,
-        while the LMSM new stack instructions operate on the upper section of memory.
+        while the new stack instructions of the LMSM operate on the upper section of memory.
     </p>
 
     <h2>The Stacks & Function Calls</h2>
 
     <p>
-        A major goal of the LMSM is to provide good hardware infrastructure for implementing
+        A major goal of the LMSM is to provide hardware infrastructure for implementing
         <a href="https://en.wikipedia.org/wiki/Function_(computer_programming)">function calls</a> so that students
-        can see how the function call abstraction can be implemented on top of raw registers and memory. The function
-        invocation mechanism in the LMSM is simple but it demonstrates the core concept of using a stack and it
-        allows for recursive function calls.
+        can see how the function call abstraction can be implemented on top of raw registers and memory. This is a crucial
+        concept in computer science, allowing us to build far more sophisticated pieces of software than raw assembly
+        does.
+    </p>
+
+    <p>
+        The function invocation mechanism in the LMSM is very simple when compared with real-world computers, but it
+        demonstrates the core concepts of using stacks to hold function-call related values and recursive function calls.
     </p>
 
     <p>
@@ -155,15 +160,18 @@
     <h2>Firth</h2>
 
     <p>
-        While the LMC is a good for introducing students to how assembly and low level computation works, it
-        does not provide enough infrastructure for creating a high-level programming language.
+        While the LMC is great for introducing students to assembly and how low level computation works, it
+        does not provide enough infrastructure for easily creating a high-level programming language.
     </p>
 
     <p>
-        By offering a more sophisticated CPU model the LMSM makes it possible to create a simple
+        By offering a slightly more sophisticated CPU model the LMSM makes it possible to create a simple
         <a href="https://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>-inspired language in a relatively
-        short amount of time.  This "high-level" language can compile down to LSMS assembly code fairly easily and it
-        includes functions, loops, conditionals and so forth: the basics of high-level programming.
+        short amount of time.  This "high-level" language can then be compiled down to LSMS assembly code fairly easily.
+    </p>
+
+    <p>
+        The language includes functions, loops, conditionals and so, er, forth: the basics of higher-level programming.
     </p>
 
     <p>
