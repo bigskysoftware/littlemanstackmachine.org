@@ -30,16 +30,23 @@
     <ul>
         <li>The operations of a basic Von-Neumann style computer</li>
         <li>How assembly works</li>
+        <li>How assembly can be converted to machine code</li>
         <li>How function calls can be implemented using basic hardware</li>
-        <li>How recursion works</li>
-        <li>How stack-based languages works</li>
+        <li>How recursive function calls work</li>
+        <li>How stack-based languages work</li>
         <li>How a high-level programming language can be compiled to assembly</li>
     </ul>
 
     <p>
+        The LMSM is simple enough that someone interested should be able to build an LMSM emulator,
+        an assembler and a compiler from a high-level language to assembly in a short amount of time, such as
+        within a single quarter or semester.
+    </p>
+
+    <p>
         Like the LMC, the LMSM models a simple <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von
         Neumann</a> computing machine and the execution cycle is identical to the LMC.  In order to better support
-        more advanced computer topics, the LMSM makes the following changes to the LMC:
+        more computer topics that the LMC the LMSM adds the following functionality:
     </p>
 
     <ul>
@@ -59,16 +66,15 @@
             </ul>
         </li>
         <li>
-            A new <code>LDI</code> <a href="https://en.wikichip.org/wiki/immediate_value">"immediate" </a> instruction
-            is added for
-            loading values directly into the accumulator.
+            A new <code>LDI</code> <a href="https://en.wikichip.org/wiki/immediate_value">"immediate"</a> instruction
+            is added for loading immediate values directly into the accumulator.
         </li>
         <li>
             A new set of stack-related instructions are available for working with the two stacks available on the
             LMSM
         </li>
         <li>
-            Two "virtual" assembly instructions are available to make assembly coding on the LMSM more pleasant.
+            Two "virtual" assembly instructions are available to make assembly coding on the LMSM a bit more pleasant.
         </li>
     </ul>
 
@@ -87,7 +93,7 @@
         be interpreted as either data or as instructions, depending on the context they are used in.  The LMSM
         follows a simple <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von Neumann</a> style
         <a href="https://en.wikipedia.org/wiki/Instruction_cycle">Instruction Cycle</a>: it loads an instruction from
-        memory, executes the instruction and then repeats.
+        memory, bumps the program counter, executes the instruction and then repeats.
     </p>
 
     <p>
@@ -97,7 +103,7 @@
     <h3>Registers</h3>
 
     <p>
-        To support computation, the LMSM has a total of five registers (two more than the LMC).  The registers are as follows:
+        The LMSM has a total of five registers (two more than the LMC).  The registers are as follows:
     </p>
 
     <ul>
@@ -115,29 +121,31 @@
         </li>
         <li>
             The <code>stack_pointer</code> register - a register that points to the memory location at the "top" of the
-            value stack.  This pointer starts at value 199 and is <em>decremented</em> as the value stack grows.
+            value stack.  This pointer starts at value 200 (meaning no stack exists) and is <em>decremented</em> as the
+            value stack grows.
         </li>
         <li>
             The <code>return_address_pointer</code> register - a register that points to the memory location at the "top" of the
-            return address stack.  This pointer starts at value 100 and is <em>incremented</em> as the value stack grows.
+            return address stack.  This pointer starts at value 99 (meaning no the return address stack is empty) and it
+            is <em>incremented</em> as the value stack grows.
         </li>
     </ul>
 
     <h3>Memory</h3>
     <p>
         The LMSM has a total of 200 memory slots, double that of the LCM.  The memory is split into two sections: "lower"
-        and "upper" segments. Traditional LMC instructions operate on the lower memory segment, while the LMSM stack
-        instructions of LMSM operate on the upper section of memory.
+        and "upper" segments. Traditional LMC instructions such as <code>ADD</code> operate on the lower memory segment,
+        while the LMSM new stack instructions operate on the upper section of memory.
     </p>
 
     <h2>The Stacks & Function Calls</h2>
 
     <p>
-        A major goal of the LMSM is to provide hardware infrastructure for implementing
+        A major goal of the LMSM is to provide good hardware infrastructure for implementing
         <a href="https://en.wikipedia.org/wiki/Function_(computer_programming)">function calls</a> so that students
-        can see how functions can be implemented on top of raw registers and memory. The function invocation
-        mechanism in the LMSM is simple but demonstrates the core concept of using a stack, and allows for recursive
-        function calls.
+        can see how the function call abstraction can be implemented on top of raw registers and memory. The function
+        invocation mechanism in the LMSM is simple but it demonstrates the core concept of using a stack and it
+        allows for recursive function calls.
     </p>
 
     <p>
@@ -147,14 +155,15 @@
     <h2>Firth</h2>
 
     <p>
-        While the LMC is very good for introducing students to how assembly and low level computation works, it
-        does not provide good infrastructure for creating a high-level programming language.
+        While the LMC is a good for introducing students to how assembly and low level computation works, it
+        does not provide enough infrastructure for creating a high-level programming language.
     </p>
 
     <p>
-        The LMSM, by offering a more sophisticated CPU model, allows us to create a simple
-        <a href="https://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>-inspired language that
-        compiles down to LSMS assembly code, complete with functions, loops, conditionals and so forth.
+        By offering a more sophisticated CPU model the LMSM makes it possible to create a simple
+        <a href="https://en.wikipedia.org/wiki/Forth_(programming_language)">Forth</a>-inspired language in a relatively
+        short amount of time.  This "high-level" language can compile down to LSMS assembly code fairly easily and it
+        includes functions, loops, conditionals and so forth: the basics of high-level programming.
     </p>
 
     <p>
