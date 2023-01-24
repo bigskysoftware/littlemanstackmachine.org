@@ -19,17 +19,21 @@
 
 <body class="padding riobeachonsummer" x-init="
     new AssemblyMode();
-    editor = new CodeMirror($refs.codeEditor, {
+    new FirthMode();
+    window.editor = new CodeMirror(document.querySelector('#codeEditor'), {
       lineNumbers: true,
       tabSize: 2,
-      mode: 'lmsm-assembly'
+      mode: this.mode
     });
-    editor.setSize('100%', '56em');
+    window.editor.setSize('100%', '56em');
   " x-data="{
   compiler: new FirthCompiler(),
-  asm: new LMSMAssembler(),
   lmsm: new LittleManStackMachine(),
   editor: undefined,
+  mode: 'lmsm-assembly',
+  setMode() {
+    window.editor.setOption('mode', this.mode)
+  },
   currentLineNumber: 0,
 }">
   <div class="grid">
@@ -38,48 +42,73 @@
     </div>
     <div id="codeEditorBox" class="box" data-cols="1" data-rows="2 5">
       <strong class="allcaps block titlebar">IDE</strong>
+      <label>
+        Mode:
+        <select x-model="mode" @change="setMode()">
+          <option value="lmsm-assembly">Assembly</option>
+          <option value="firth">Firth</option>
+        </select>
+      </label>
       <section class="tool-bar" x-data="{
-        load() {
+        compile() {
+          this.lmsm = new LittleManStackMachine();
+          compiled = this.lmsm.compile(window.editor.getValue());
+          assembled = this.lmsm.assemble(compiled);
+          this.lmsm.load(assembled);
+        },
+        assemble() {
           this.lmsm = new LittleManStackMachine();
           if(this.currentLineNumber !== -1) {
             this.editor.getDoc().removeLineClass(this.currentLineNumber, 'background', 'markCode');
           }
           this.currentLineNumber = -1;
-          code = this.editor.getValue();
-          assembled = this.lmsm.assembler.assemble(code);
+          code = window.editor.getValue();
+          assembled = this.lmsm.assemble(code);
           this.lmsm.load(assembled);
         },
         run() {
           this.lmsm.run();
         },
       }">
-        <input type="button" @click=" load()" value="Load" />
-        <input type="button" @click="run()" value="Run" />
-        <input type="button" x-data="{
-              loadAndRun() {
-                this.lmsm = new LittleManStackMachine();
-                if(this.currentLineNumber !== -1) {
-                  this.editor.getDoc().removeLineClass(this.currentLineNumber, 'background', 'markCode');
-                }
-                this.currentLineNumber = -1;
-                code = this.editor.getValue();
-                this.lmsm.assembleAndRun(this.editor.getValue());
-              },
-          }" @click="loadAndRun()" value="Load & Run" />
-        <input type="button" x-data="{
-              step() {
-                if(this.currentLineNumber !== -1) {
+
+        <label x-show="mode === 'firth'">
+          <input type="button" @click="compile()" value="Compile" />
+        </label>
+        <label x-show="mode === 'lmsm-assembly'">
+          <input type="button" @click="assemble()" value="Assemble" />
+        </label>
+        <label>
+          <input type="button" @click="run()" value="Run" />
+        </label>
+        <label>
+          <input type="button" x-data="{
+                assembleAndRun() {
+                  this.lmsm = new LittleManStackMachine();
+                  if(this.currentLineNumber !== -1) {
+                    this.editor.getDoc().removeLineClass(this.currentLineNumber, 'background', 'markCode');
+                  }
+                  this.currentLineNumber = -1;
+                  code = window.editor.getValue();
+                  this.lmsm.assembleAndRun(window.editor.getValue());
+                },
+            }" @click="assembleAndRun()" value="Load & Run" />
+        </label>
+        <label>
+          <input type="button" x-data="{
+                step() {
+                  if(this.currentLineNumber !== -1) {
+                    this.editor.getDoc()
+                      .removeLineClass(this.currentLineNumber, 'background', 'markCode');
+                    this.lmsm.step();
+                  }
+                  this.currentLineNumber++;
                   this.editor.getDoc()
-                    .removeLineClass(this.currentLineNumber, 'background', 'markCode');
-                  this.lmsm.step();
-                }
-                this.currentLineNumber++;
-                this.editor.getDoc()
-                  .addLineClass(this.currentLineNumber, 'background', 'markCode');
-                }
-          }" @click="step()" value="Step" />
+                    .addLineClass(this.currentLineNumber, 'background', 'markCode');
+                  }
+            }" @click="step()" value="Step" />
+        </label>
       </section>
-      <div id="codeEditor" x-ref="codeEditor"></div>
+      <div id="codeEditor"></div>
     </div>
     <div id="registerFileBox" class="box" data-cols="2" data-rows="2">
       <strong class="allcaps block titlebar">Register File</strong>

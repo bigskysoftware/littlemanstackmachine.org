@@ -14,3 +14,20 @@ class AssemblyMode {
     });
   }
 }
+
+class FirthMode {
+  constructor() {
+    CodeMirror.defineSimpleMode("firth", {
+      start: [
+        {
+          regex: /(?:def)\b/,
+          token: "keyword"
+        },
+        {
+          regex: /\d\d/,
+          token: "number",
+        },
+      ]
+    });
+  }
+}
