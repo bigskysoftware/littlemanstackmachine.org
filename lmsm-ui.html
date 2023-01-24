@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LMSM Emulator</title>
+  <link rel="stylesheet" href="https://the.missing.style/v1.0.8/missing.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="lmsm.css" />
+  <script src="//unpkg.com/alpinejs" defer></script>
+  <script src="https://unpkg.com/hyperscript.org@0.9.7"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.js" integrity="sha512-rdFIN28+neM8H8zNsjRClhJb1fIYby2YCNmoqwnqBDEvZgpcp7MJiX8Wd+Oi6KcJOMOuvGztjrsI59rly9BsVQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="lmsm.js"></script>
+  <script src="lmsm-ui.js"></script>
+</head>
+
+<body class="padding riobeachonsummer" x-init="
+    new AssemblyMode();
+    editor = new CodeMirror($refs.codeEditor, {
+      lineNumbers: true,
+      tabSize: 2,
+      mode: 'lmsm-assembly'
+    });
+    editor.setSize('100%', '56em');
+  " x-data="{
+  compiler: new FirthCompiler(),
+  asm: new LMSMAssembler(),
+  lmsm: new LittleManStackMachine(),
+  editor: undefined,
+  currentLineNumber: 0,
+}">
+  <div class="grid">
+    <div id="titleBox" class="box center" data-cols="1 3" data-rows="1">
+      <h2 class="allcaps">Little Man Stack Machine Emulator</h2>
+    </div>
+    <div id="codeEditorBox" class="box" data-cols="1" data-rows="2 5">
+      <strong class="allcaps block titlebar">IDE</strong>
+      <section class="tool-bar" x-data="{
+        load() {
+          this.lmsm = new LittleManStackMachine();
+          if(this.currentLineNumber !== -1) {
+            this.editor.getDoc().removeLineClass(this.currentLineNumber, 'background', 'markCode');
+          }
+          this.currentLineNumber = -1;
+          code = this.editor.getValue();
+          assembled = this.lmsm.assembler.assemble(code);
+          this.lmsm.load(assembled);
+        },
+        run() {
+          this.lmsm.run();
+        },
+      }">
+        <input type="button" @click=" load()" value="Load" />
+        <input type="button" @click="run()" value="Run" />
+        <input type="button" x-data="{
+              loadAndRun() {
+                this.lmsm = new LittleManStackMachine();
+                if(this.currentLineNumber !== -1) {
+                  this.editor.getDoc().removeLineClass(this.currentLineNumber, 'background', 'markCode');
+                }
+                this.currentLineNumber = -1;
+                code = this.editor.getValue();
+                this.lmsm.assembleAndRun(this.editor.getValue());
+              },
+          }" @click="loadAndRun()" value="Load & Run" />
+        <input type="button" x-data="{
+              step() {
+                if(this.currentLineNumber !== -1) {
+                  this.editor.getDoc()
+                    .removeLineClass(this.currentLineNumber, 'background', 'markCode');
+                  this.lmsm.step();
+                }
+                this.currentLineNumber++;
+                this.editor.getDoc()
+                  .addLineClass(this.currentLineNumber, 'background', 'markCode');
+                }
+          }" @click="step()" value="Step" />
+      </section>
+      <div id="codeEditor" x-ref="codeEditor"></div>
+    </div>
+    <div id="registerFileBox" class="box" data-cols="2" data-rows="2">
+      <strong class="allcaps block titlebar">Register File</strong>
+      <div class="margin grid">
+        <div class="box bad" data-cols="1">
+          <label for="pc" class="bold">PC:
+            <input name="pc" class="register" type="text" size="3" :value="lmsm.registers.program_counter" />
+          </label>
+        </div>
+        <div class="box info" data-cols="2">
+          <label for="acc" class="bold">ACC:
+            <input name="acc" class="register" size="3" type="text" :value="lmsm.registers.accumulator" />
+          </label>
+        </div>
+        <div class="box info" data-cols="3">
+          <label for="ci" class="bold">CI:
+            <input name="ci" class="register" size="3" type="text" :value="lmsm.registers.current_instruction" />
+          </label>
+        </div>
+        <div class="box ok" data-cols="4">
+          <label for="sp" class="bold">SP:
+            <input name="sp" class="register" size="3" type="text" :value="lmsm.registers.stack_pointer" />
+          </label>
+        </div>
+        <div class="box warn" data-cols="5">
+          <label for="rap" class="bold">RAP:
+            <input name="rap" class="register" size="3" type="text" :value="lmsm.registers.return_address_pointer" />
+          </label>
+        </div>
+      </div>
+    </div>
+    <div id="memoryBox" class="box" data-cols="2" data-rows="3 5">
+      <strong class="allcaps block titlebar">Memory Layout</strong>
+      <div class="center">
+        <table>
+          <caption></caption>
+          <thead>
+            <th></th>
+            <template x-for="i in 10">
+              <th x-text="i - 1"></th>
+            </template>
+          </thead>
+          <tbody>
+            <template x-for="i in 20">
+              <tr>
+                <td x-text="(i - 1) * 10" class="bold"></td>
+                <template x-for="j in 10">
+                  <td class="memorySlot">
+                    <label>
+                      <input size="3" type="text" :class="cellClass()" x-model="lmsm.memory[mempos]" x-data="{
+                        mempos: ((i-1) * 10) + (j - 1), 
+                        cellClass() {
+                          if(this.lmsm.registers.program_counter == this.mempos)
+                          return 'memory_slot program_counter'
+                          else if (this.lmsm.registers.stack_pointer === this.mempos)
+                          return 'memory_slot stack_pointer'
+                          else if(this.lmsm.registers.return_address_pointer === this.mempos)
+                          return 'memory_slot return_address_pointer'
+                          else return 'memory_slot';
+                        }
+                      }" />
+                      </label>
+                  </td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="outputBox" class="box" data-cols="3" data-rows="2 5">
+      <strong class="allcaps block titlebar">Output</strong>
+      <input type="button" @click="lmsm.clearOutput()" value="Clear" />
+      <div id="outputPane" class="box pane" 
+        _="on mutation of childList me.scroll({top: my scrollHeight, left: 0, behavior: 'smooth'})">
+        <template x-for="line in lmsm.output">
+          <div x-text="line"></div>
+        </template>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

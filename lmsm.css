@@ -1,0 +1,45 @@
+input.memory_slot {
+  font-size: small;
+  background-color: whitesmoke;
+}
+
+.box {
+  font-size: small;
+}
+
+.pane {
+  background-color: white;
+}
+
+.markCode {
+  background-color: lightgrey;
+}
+
+.riobeachonsummer {
+  --density: 0.125;
+}
+
+input.register {
+  line-height: 0em;
+}
+
+input.program_counter {
+  background-color: var(--bad-bg);
+}
+
+input.stack_pointer {
+  background-color: var(--ok-bg);
+}
+
+input.return_address_pointer {
+  background-color: var(--warn-bg);
+}
+
+td.memorySlot {
+  padding-inline-end: 0em;
+}  
+
+#outputPane {
+  height: 52em;
+  overflow-y: scroll;
+}  

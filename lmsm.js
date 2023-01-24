@@ -6,6 +6,8 @@ class LittleManStackMachine {
 
     output = []
 
+    assembler = new LMSMAssembler();
+
     registers = {
         program_counter:0,
         current_instruction:0,
@@ -24,14 +26,14 @@ class LittleManStackMachine {
     compileAndRun(src) {
         let compiler = new FirthCompiler();
         let compiledAssembly = compiler.compile(src);
-        let assembler = new LMSMAssembler();
+        this.assembler = new LMSMAssembler();
         let machine_code = assembler.assemble(compiledAssembly);
         this.load(machine_code);
         this.run();
     }
 
     assembleAndRun(src) {
-        let assembler = new LMSMAssembler();
+        this.assembler = new LMSMAssembler();
         let machine_code = assembler.assemble(src);
         this.load(machine_code);
         this.run();
