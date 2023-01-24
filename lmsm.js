@@ -1,6 +1,6 @@
 class LittleManStackMachine {
 
-    state = "Ready"
+    status = "Ready"
 
     memory = []
 
@@ -74,7 +74,7 @@ class LittleManStackMachine {
 
     executeInstruction(instruction) {
         if (instruction === 0) {
-            this.state = "Stopped";
+            this.status = "Stopped";
         } else if (100 <= instruction && instruction <= 199) {
             this.registers.accumulator += this.memory[instruction - 100];
         } else if (200 <= instruction && instruction <= 299) {
