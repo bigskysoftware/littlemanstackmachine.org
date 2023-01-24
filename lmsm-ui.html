@@ -30,7 +30,7 @@
   compiler: new FirthCompiler(),
   lmsm: new LittleManStackMachine(),
   editor: undefined,
-  mode: 'lmsm-assembly',
+  mode: 'firth',
   setMode() {
     window.editor.setOption('mode', this.mode)
   },
@@ -81,7 +81,7 @@
           <input type="button" @click="run()" value="Run" />
         </label>
         <label>
-          <input type="button" x-data="{
+          <input type="button" x-show="mode === 'lmsm-assembly'" x-data="{
                 assembleAndRun() {
                   this.lmsm = new LittleManStackMachine();
                   if(this.currentLineNumber !== -1) {

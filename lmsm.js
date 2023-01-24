@@ -35,15 +35,13 @@ class LittleManStackMachine {
 
     compileAndRun(src) {
         let compiledAssembly = this.compile(src);
-        let assembler = new LMSMAssembler();
-        let machine_code = assembler.assemble(compiledAssembly);
+        let machine_code = this.assemble(compiledAssembly);
         this.load(machine_code);
         this.run();
     }
 
     assembleAndRun(src) {
-        let assembler = new LMSMAssembler();
-        let machine_code = assembler.assemble(src);
+        let machine_code = this.assemble(src);
         this.load(machine_code);
         this.run();
     }

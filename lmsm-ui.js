@@ -20,7 +20,7 @@ class FirthMode {
     CodeMirror.defineSimpleMode("firth", {
       start: [
         {
-          regex: /(?:def)\b/,
+          regex: /(?:def|\.|get|end|dup)\b/,
           token: "keyword"
         },
         {
