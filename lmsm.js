@@ -96,12 +96,8 @@ class LittleManStackMachine {
                 this.registers.program_counter = instruction - 800;
             }
         } else if (instruction === 901) {
-            this.status = "Waiting";
-            let that = this;
-            Promise.resolve(this.inputCallback()).then(function(value) {
-                that.registers.accumulator = value;
-                that.run();
-            })
+            let value = this.inputCallback();
+            this.registers.accumulator = value;
         } else if (instruction === 902) {
             console.log(this.registers.accumulator + " ");
             this.output.push(this.registers.accumulator);
