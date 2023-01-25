@@ -36,15 +36,28 @@
     });
     CodeMirror.defineSimpleMode('firth', {
       start: [
-        {
-          regex: /(?:def|\.|get|end|dup|do|zero\?)\b/,
+      {
+          regex: /(?:def|get|else|stop|var|return|swap|end|dup|do)\b/,
           token: 'keyword'
+        },
+        {
+          regex: /zero\?/,
+          token: 'keyword',
+        },
+        {
+          regex: /asm/,
+          token: 'keyword',
+          mode: {spec: 'lmsm-assembly', end: /end/}
+        },
+        {
+          regex: /\*/,
+          token: 'operator'
         },
         {
           regex: /\d\d/,
           token: 'number',
         },
-      ]
+      ],
     });
     window.editor = CodeMirror(document.querySelector('#codeEditor'), {
       lineNumbers: true,
@@ -53,7 +66,7 @@
     window.editor.setSize('100%', '50em');
     window.editor.setOption('mode', mode);
   " x-data="{
-    mode: 'lmsm-assembly',
+    mode: 'firth',
     currentLineNumber: -1,
     setMode() {
       window.editor.setOption('mode', this.mode);
