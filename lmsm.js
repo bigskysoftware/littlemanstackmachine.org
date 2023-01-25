@@ -51,6 +51,7 @@ class LittleManStackMachine {
     }
 
     step() {
+        this.status = "Running";
         this.executeCurrentInstruction();
     }
 
@@ -60,15 +61,15 @@ class LittleManStackMachine {
             this.registers.program_counter++;
             this.executeInstruction(this.registers.current_instruction);
         }
+        if (this.status === "Error") {
+            console.error("Error : " + this.error);
+        }
     }
 
     run() {
         this.status = "Running";
         while (this.status === "Running") {
             this.executeCurrentInstruction();
-        }
-        if (this.status === "Error") {
-            console.error("Error : " + this.error);
         }
     }
 
