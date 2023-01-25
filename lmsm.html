@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="https://the.missing.style/v1.0.8/missing.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="lmsm.css" />
-  <script src="//unpkg.com/alpinejs" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.js" integrity="sha512-rdFIN28+neM8H8zNsjRClhJb1fIYby2YCNmoqwnqBDEvZgpcp7MJiX8Wd+Oi6KcJOMOuvGztjrsI59rly9BsVQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
   <script src="https://unpkg.com/hyperscript.org@0.9.7"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.js" integrity="sha512-rdFIN28+neM8H8zNsjRClhJb1fIYby2YCNmoqwnqBDEvZgpcp7MJiX8Wd+Oi6KcJOMOuvGztjrsI59rly9BsVQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="//unpkg.com/alpinejs" defer></script>
   <script src="lmsm.js"></script>
 </head>
 
@@ -37,7 +37,7 @@
     CodeMirror.defineSimpleMode('firth', {
       start: [
         {
-          regex: /(?:def|\.|get|end|dup)\b/,
+          regex: /(?:def|\.|get|end|dup|do|zero\?)\b/,
           token: 'keyword'
         },
         {
@@ -46,18 +46,17 @@
         },
       ]
     });
-    window.editor = new CodeMirror(document.querySelector('#codeEditor'), {
+    window.editor = CodeMirror(document.querySelector('#codeEditor'), {
       lineNumbers: true,
       tabSize: 2,
-      mode: this.mode
     });
     window.editor.setSize('100%', '50em');
+    window.editor.setOption('mode', mode);
   " x-data="{
-    mode: 'firth',
+    mode: 'lmsm-assembly',
     currentLineNumber: -1,
     setMode() {
       window.editor.setOption('mode', this.mode);
-      window.editor.refresh();
     },
   }">
       <strong class="allcaps block titlebar">IDE</strong>
