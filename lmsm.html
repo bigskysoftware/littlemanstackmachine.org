@@ -14,10 +14,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.js" integrity="sha512-rdFIN28+neM8H8zNsjRClhJb1fIYby2YCNmoqwnqBDEvZgpcp7MJiX8Wd+Oi6KcJOMOuvGztjrsI59rly9BsVQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="lmsm.js"></script>
-  <script src="lmsm-ui.js"></script>
 </head>
 
-<body class="padding riobeachonsummer" x-init="
+<body class="padding riobeachonsummer" x-data="{ lmsm: new LittleManStackMachine() }">
+  <div class="grid">
+    <div id="titleBox" class="box center" data-cols="1 3" data-rows="1">
+      <h2 class="allcaps">Little Man Stack Machine Emulator</h2>
+    </div>
+    <div id="codeEditorBox" class="box" data-cols="1" data-rows="2 5" x-init="
     CodeMirror.defineSimpleMode('lmsm-assembly', {
       start: [
         {
@@ -47,25 +51,18 @@
       tabSize: 2,
       mode: this.mode
     });
-    window.editor.setSize('100%', '56em');
+    window.editor.setSize('100%', '50em');
   " x-data="{
-  lmsm: new LittleManStackMachine(),
-  mode: 'firth',
-  setMode() {
-    window.editor.setOption('mode', this.mode);
-    window.editor.refresh();
-  },
-  currentLineNumber: -1,
-}">
-  <div class="grid">
-    <div id="titleBox" class="box center" data-cols="1 3" data-rows="1">
-      <h2 class="allcaps">Little Man Stack Machine Emulator</h2>
-    </div>
-    <div id="codeEditorBox" class="box" data-cols="1" data-rows="2 5">
+    mode: 'firth',
+    currentLineNumber: -1,
+    setMode() {
+      window.editor.setOption('mode', this.mode);
+      window.editor.refresh();
+    },
+  }">
       <strong class="allcaps block titlebar">IDE</strong>
-      <label>
-        Mode:
-        <select x-model="mode" @change="setMode()">
+      <label for="mode">
+        <select name="mode" x-model="mode" @change="setMode()">
           <option value="lmsm-assembly">Assembly</option>
           <option value="firth">Firth</option>
         </select>
@@ -106,8 +103,8 @@
         <label>
           <input type="button" @click="run()" value="Run" />
         </label>
-        <label>
-          <input type="button" x-show="mode === 'lmsm-assembly'" x-data="{
+        <label x-show="mode === 'lmsm-assembly'">
+          <input type="button" x-data="{
                 assembleAndRun() {
                   this.lmsm = new LittleManStackMachine();
                   if(this.currentLineNumber !== -1) {
@@ -119,7 +116,7 @@
                 },
             }" @click="assembleAndRun()" value="Load & Run" />
         </label>
-        <label>
+        <label x-show="mode === 'lmsm-assembly'">
           <input type="button" x-data="{
                 step() {
                   if(this.currentLineNumber !== -1) {
