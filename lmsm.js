@@ -415,19 +415,19 @@ class FirthCompiler {
     KEYWORDS = ["end", "loop", "else"];
 
     // basic operations in Firth
-    OPS = {"+" : "SADD",
-           "-" : "SSUB",
-           "*" : "SMUL",
-           "/" : "SDIV",
-           "max" : "SMAX",
-           "min" : "SMIN",
-           "dup" : "SDUP",
-           "swap" : "SSWAP",
-           "pop" : "SPOP",
-           "drop" : "SDROP",
-           "return" : "RET",
-           "get" : "INP\nSPUSH",
-           "." : "SDUP\nSPOP\nOUT"}
+    OPS = {"+" : ["SADD"],
+           "-" : ["SSUB"],
+           "*" : ["SMUL"],
+           "/" : ["SDIV"],
+           "max" : ["SMAX"],
+           "min" : ["SMIN"],
+           "dup" : ["SDUP"],
+           "swap" : ["SSWAP"],
+           "pop" : ["SPOP"],
+           "drop" : ["SDROP"],
+           "return" : ["RET"],
+           "get" : ["INP", "SPUSH"],
+           "." : ["SDUP", "SPOP", "OUT"]}
 
     // syntax patterns
     FUNCTION_PATTERN = /^[a-zA-Z][a-zA-Z_]*\(\)$/
@@ -440,12 +440,18 @@ class FirthCompiler {
 
         let rootElements = this.parseFirthProgram();
 
-        let assembly = this.codeGen(rootElements);
+        let codeGenResult = this.codeGen(rootElements);
+
         let parseResult = {
             parsedElements: rootElements,
-            assembly : assembly,
+            sourceMap : codeGenResult.sourceMap,
+            assembly : codeGenResult.getAssembly(),
             errors: this.collectErrors(rootElements),
+            originalSource: firthSource,
         }
+
+        console.log(parseResult);
+
         return parseResult
     }
 
@@ -512,11 +518,15 @@ class FirthCompiler {
     parseInt() {
         if (this.currentTokenIsANumber()) {
             let token = this.takeToken();
-            return {
+            let numberLiteral = {
                 type: "Number",
                 token: token,
                 value: parseInt(token.value),
+            };
+            if (numberLiteral.value < -999 || 999 < numberLiteral.value) {
+                numberLiteral.error = "Numbers in Firth can only only be between -999 and 999";
             }
+            return numberLiteral;
         }
     }
 
@@ -602,6 +612,9 @@ class FirthCompiler {
                 token: this.takeToken(),
                 loop: currentLoop
             };
+            if (currentLoop == null) {
+                stopLoop.error = "stop must appear inside a loop";
+            }
             return stopLoop;
         }
     }
@@ -622,7 +635,7 @@ class FirthCompiler {
             this.loopStack.pop();
 
             if (this.currentTokenIs("loop")) {
-                this.takeToken()
+                loopElt.loopToken = this.takeToken()
             } else {
                 loopElt.error = "Expected 'loop' to close loop"
             }
@@ -688,7 +701,7 @@ class FirthCompiler {
                     line = currentToken.line
                 } else if(line !== currentToken.line) {
                     line = currentToken.line;
-                    asmElt.assembly.push("\n"); // pass newline through
+                    asmElt.assembly.push(""); // pass newline through
                 }
                 asmElt.assembly.push(currentToken.value);
             }
@@ -796,81 +809,87 @@ class FirthCompiler {
     codeGenForElement(element, code) {
         if (element.type === "Number") {
             if (0 <= element.value && element.value <= 99) {
-                code.push("SPUSHI " + element.value + "\n");
+                code.add("SPUSHI " + element.value, element.token);
             } else {
                 let overflowSlotLabel = "_OVERFLOW_" + this.overflow++;
                 this.overflowValues[overflowSlotLabel] = element.value;
-                code.push("LDA " + overflowSlotLabel + "\n");
-                code.push("SPUSH\n");
+                code.add("LDA " + overflowSlotLabel, element.token);
+                code.add("SPUSH", element.token);
             }
         } else if (element.type === "Op") {
-            code.push(this.OPS[element.op] + "\n");
+            let opAssembly = this.OPS[element.op];
+            for (const asm of opAssembly) {
+                code.add(asm, element.token);
+            }
         } else if (element.type === "FunctionCall") {
-            code.push("CALL " + element.functionName + "\n");
+            code.add("CALL " + element.functionName, element.token);
         } else if (element.type === "FunctionDefinition") {
-            code.push(element.name + " ");
+            code.labelNextInstruction(element.name);
             for (const elt of element.body) {
                 this.codeGenForElement(elt, code);
             }
-            code.push("RET\n");
+            // implicit return is last element of the body, if any
+            code.add("RET");
+
         } else if (element.type === "Conditional") {
             let trueLabel = "COND_" + element.conditionCount;
             let endLabel = "END_COND_" + element.conditionCount;
-            code.push("SPOP\n")
+            code.add("SPOP", element.token);
             if (element.conditionType === "zero?") {
-                code.push("BRZ ");
+                code.add("BRZ " + trueLabel);
             } else {
-                code.push("BRP ");
+                code.add("BRP " + trueLabel);
             }
-            code.push(trueLabel + "\n");
             if (element.falseBranch.length > 0) {
                 for (const elt of element.falseBranch) {
                     this.codeGenForElement(elt, code);
                 }
             }
-            code.push("BRA " + endLabel + "\n");
-
-            code.push(trueLabel + " ")
+            code.add("BRA " + endLabel);
+            code.labelNextInstruction(trueLabel);
             if (element.trueBranch.length > 0) {
                 for (const elt of element.trueBranch) {
                     this.codeGenForElement(elt, code);
                 }
             } else {
-                code.push("ADD ZERO\n");
+                code.add("ADD ZERO");
             }
-            code.push(endLabel + " ADD ZERO\n");
+            code.labelNextInstruction(endLabel);
+            code.add("ADD ZERO");
         } else if (element.type === "Loop") {
             let startLabel = "LOOP_" + element.loopCount;
             let endLabel = "END_LOOP_" + element.loopCount;
-            code.push(startLabel + " ");
+            code.labelNextInstruction(startLabel);
             for (const elt of element.body) {
                 this.codeGenForElement(elt, code);
             }
-            code.push("BRA " + startLabel + "\n");
-            code.push(endLabel + " ADD ZERO\n");
+            code.add("BRA " + startLabel, element.loopToken);
+            code.labelNextInstruction(endLabel);
+            code.add("ADD ZERO");
         } else if (element.type === "Stop") {
-            code.push("BRA END_LOOP_" + element.loop.loopCount + "\n");
+            code.add("BRA END_LOOP_" + element.loop.loopCount, element.token);
         } else if (element.type === "VariableRead") {
-            code.push("LDA " + element.token.value + "\n");
+            code.add("LDA " + element.token.value, element.token);
         } else if (element.type === "VariableWrite") {
             let varName = element.token.value;
             let variableName = varName.substring(0, varName.length - 1);
-            code.push("STA " + variableName + "\n");
+            code.add("STA " + variableName, element.token);
         } else if (element.type === "VariableDeclaration") {
-            code.push(element.name + " DAT 0\n");
+            code.add(element.name + " DAT 0");
         } else if (element.type === "Assembly") {
-            code.push(element.assembly.join(" ") + "\n");
+            code.add(element.assembly.join(" "), element.token);
         }
     }
 
-    codeGen(elements) {
-        let code = [];
 
-        // generate non-functions first
+    codeGen(elements) {
+        let code = new FirthCodeGenerator();
+
+        // generate non-functions&vars first
         for (const element of elements.filter(element => element.type !== "FunctionDefinition" && element.type !== "VariableDeclaration")) {
             this.codeGenForElement(element, code);
         }
-        code.push("ZERO HLT\n"); // End program with a halt, labeled zero to support no-ops
+        code.add("ZERO HLT"); // End program with a halt, labeled zero to support no-ops
 
         // generate functions second
         for (const element of elements.filter(element => element.type === "FunctionDefinition")) {
@@ -884,10 +903,55 @@ class FirthCompiler {
 
         // overflow literal values fourth
         for (const label in this.overflowValues) {
-            code.push(label + " DAT " + this.overflowValues[label]);
+            code.add(label + " DAT " + this.overflowValues[label]);
         }
 
-        let s = code.join("");
-        return s;
+        return code
+    }
+}
+
+/**
+ * This is a simple class to collect ASM instructions and produce a map of ASM instruction lines to Firth program
+ * lines.
+ */
+class FirthCodeGenerator {
+
+    // generated assembly
+    code = [];
+
+    // map of source lines to firth program lines
+    sourceMap = {};
+
+    // label for next instruction
+    label = null;
+
+    // last line
+    currentSourceLine = 0;
+
+    labelNextInstruction(str) {
+        if (this.label) {
+            throw "Cannot label same instruction twice!";
+        } else {
+            this.label = str;
+        }
+    }
+
+    add(instruction, token) {
+        // consume the current label, if any
+        if (this.label) {
+            instruction = this.label + " " + instruction;
+            this.label = null;
+        }
+        this.code.push(instruction);
+        if (token) {
+            this.currentSourceLine = token.line
+        }
+        this.sourceMap[this.code.length] = this.currentSourceLine;
+    }
+
+    getAssembly() {
+        let s = this.code.join("\n");
+        console.log(s)
+        return s
     }
 }
