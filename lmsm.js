@@ -23,8 +23,16 @@ class LittleManStackMachine {
 
     compile(src) {
         let compiler = new FirthCompiler();
-        let compiledAssembly = compiler.compile(src);
-        return compiledAssembly;
+        let compileResult = compiler.compile(src);
+        if (compileResult.errors.length > 0) {
+            console.error("Compilation Errors:")
+            for (const err of compileResult.errors) {
+                console.error(err)
+            }
+            return "";
+        } else {
+            return compileResult.assembly;
+        }
     }
 
     assemble(compiledAssembly) {
@@ -394,7 +402,10 @@ class FirthCompiler {
     variable = 1;
     overflow = 1;
 
-    // loop stack so stop elements can resolve jump
+    // variable names
+    variables = []
+
+    // a loop stack so stop elements can resolve proper jump label
     loopStack = [];
 
     // literal number values that require named DAT slots to hold
@@ -402,7 +413,6 @@ class FirthCompiler {
 
     // statement terminators
     KEYWORDS = ["end", "loop", "else"];
-
 
     // basic operations in Firth
     OPS = {"+" : "SADD",
@@ -420,16 +430,38 @@ class FirthCompiler {
            "." : "SDUP\nSPOP\nOUT"}
 
     // syntax patterns
-    FUNCTION_PATTERN = /^[a-zA-Z][a-zA-Z_]+\(\)$/
-    VARIABLE_PATTERN = /^[a-zA-Z][a-zA-Z_]+$/
-    VARIABLE_WRITE_PATTERN = /^[a-zA-Z][a-zA-Z_]+!$/
+    FUNCTION_PATTERN = /^[a-zA-Z][a-zA-Z_]*\(\)$/
+    VARIABLE_PATTERN = /^[a-zA-Z][a-zA-Z_]*$/
+    VARIABLE_WRITE_PATTERN = /^[a-zA-Z][a-zA-Z_]*!$/
 
     compile(firthSource) {
         let lmsmTokenizer = new LMSMTokenizer(firthSource);
         this.tokens = lmsmTokenizer.tokenize();
+
         let rootElements = this.parseFirthProgram();
+
         let assembly = this.codeGen(rootElements);
-        return assembly
+        let parseResult = {
+            parsedElements: rootElements,
+            assembly : assembly,
+            errors: this.collectErrors(rootElements),
+        }
+        return parseResult
+    }
+
+    collectErrors(elements, errors) {
+        if (elements) {
+            errors ||= []
+            for (const elt of elements) {
+                if (elt.error) {
+                    errors.push(elt.error);
+                }
+                this.collectErrors(elt.body, errors);
+                this.collectErrors(elt.trueBranch, errors);
+                this.collectErrors(elt.falseBranch, errors);
+            }
+            return errors;
+        }
     }
 
     currentToken(){
@@ -610,6 +642,8 @@ class FirthCompiler {
                 name: nameToken ? nameToken.value : null,
             };
 
+            this.variables.push(variableElt.name)
+
             if (variableElt.name == null || !variableElt.name.match(this.VARIABLE_PATTERN)) {
                 variableElt.error = "Expected variable to have a name"
             }
@@ -619,10 +653,14 @@ class FirthCompiler {
 
     parseVariableRead() {
         if (this.currentTokenMatches(this.VARIABLE_PATTERN) && !this.currentTokenIsKeyword()) {
-            return {
+            let variableRead = {
                 type: "VariableRead",
                 token: this.takeToken(),
+            };
+            if (!this.variables.includes(variableRead.token.value)) {
+                variableRead.error = "No variable named " + variableRead.token.value + " found!";
             }
+            return variableRead;
         }
     }
 
@@ -715,20 +753,31 @@ class FirthCompiler {
             return variableWrite;
         }
 
+        let badVariableDeclaration = this.parseVariableDeclaration();
+        if (badVariableDeclaration) {
+            badVariableDeclaration.error = "Variables must be declared at the start of a Firth program"
+            return badVariableDeclaration;
+        }
+
+        let token = this.takeToken();
         return {
             type: "ERROR",
-            message: "Unknown token : " + this.takeToken()
+            error: "Unknown token : " + token.value,
+            token: token
         };
     }
 
 
     parseFirthProgram() {
         let program = [];
+
+        // variables must come first
         let varDeclaration = this.parseVariableDeclaration();
         while (varDeclaration != null) {
             program.push(varDeclaration);
             varDeclaration = this.parseVariableDeclaration();
         }
+
         let restOfProgram = this.parseElements();
         for (const elt of restOfProgram) {
             program.push(elt);
@@ -839,7 +888,6 @@ class FirthCompiler {
         }
 
         let s = code.join("");
-        console.log(s);
         return s;
     }
 }
