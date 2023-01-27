@@ -37,8 +37,9 @@ class LittleManStackMachine {
 
     assemble(compiledAssembly) {
         let assembler = new LMSMAssembler();
-        let machine_code = assembler.assemble(compiledAssembly);
-        return machine_code;
+        let assemblyResult = assembler.assemble(compiledAssembly);
+        console.log(assemblyResult);
+        return assemblyResult.machineCode;
     }
 
     compileAndRun(src) {
@@ -318,11 +319,14 @@ class LMSMAssembler {
     ARG_INSTRUCTIONS = ["ADD", "SUB", "LDA", "STA", "BRA", "BRZ", "BRP", "DAT", "LDI", "CALL", "SPUSHI"]
 
     assemble(asmSource) {
+
         let lmsmTokenizer = new LMSMTokenizer(asmSource);
         let tokens = lmsmTokenizer.tokenize();
         let instructions = []
+        let sourceMap = {}
         let labelsToInstructions = {}
         let offset = 0;
+
         while (tokens.length > 0) {
             let token = tokens.shift();
             let instruction = {offset:offset};
@@ -368,6 +372,7 @@ class LMSMAssembler {
             }
 
             let baseValue = this.INSTRUCTIONS[instruction.token.value];
+            sourceMap[instruction.offset] = instruction.token.line;
             if (baseValue === this.SYNTHETIC_INSTRUCTION) {
                 if (instruction.token.value === "DAT") {
                     machineCode[instruction.offset] = resolvedArg;
@@ -375,11 +380,12 @@ class LMSMAssembler {
                     machineCode[instruction.offset] = 400 + resolvedArg;
                     machineCode[instruction.offset + 1] = 920;
                     machineCode[instruction.offset + 2] = 910;
-
+                    sourceMap[instruction.offset + 1] = instruction.token.line;
+                    sourceMap[instruction.offset + 2] = instruction.token.line;
                 } else if (instruction.token.value === "SPUSHI") {
                     machineCode[instruction.offset] = 400 + resolvedArg;
                     machineCode[instruction.offset + 1] = 920;
-
+                    sourceMap[instruction.offset + 1] = instruction.token.line;
                 }
             } else {
                 if (this.ARG_INSTRUCTIONS.includes(instruction.token.value)) {
@@ -389,7 +395,11 @@ class LMSMAssembler {
                 }
             }
         }
-        return machineCode;
+        return {
+            originalSource: asmSource,
+            sourceMap : sourceMap,
+            machineCode : machineCode
+        };
     }
 
 }
