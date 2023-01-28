@@ -11,6 +11,8 @@ class LittleManStackMachine {
 
     // The output buffer of the machine
     output = []
+    
+    outputFunction = (value) => {}
 
     // This is the register file for the machine, with a total of five registers
     registers = {
@@ -136,6 +138,7 @@ class LittleManStackMachine {
         } else if (instruction === 902) {
             console.log(this.registers.accumulator + " ");
             this.output.push(this.registers.accumulator);
+            this.outputFunction(this.registers.accumulator);
         } else if (instruction === 910) {
             this.registers.return_address_pointer++;
             this.memory[this.registers.return_address_pointer] = this.registers.program_counter;
