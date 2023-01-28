@@ -5,6 +5,8 @@ class LittleManStackMachine {
     memory = []
 
     output = []
+    
+    outputFunction = (value) => {}
 
     registers = {
         program_counter:0,
@@ -111,6 +113,7 @@ class LittleManStackMachine {
         } else if (instruction === 902) {
             console.log(this.registers.accumulator + " ");
             this.output.push(this.registers.accumulator);
+            this.outputFunction(this.registers.accumulator);
         } else if (instruction === 910) {
             this.registers.return_address_pointer++;
             this.memory[this.registers.return_address_pointer] = this.registers.program_counter;
