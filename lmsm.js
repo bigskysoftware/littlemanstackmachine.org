@@ -1,26 +1,36 @@
+/**
+ * This is the main emulator of the LittleManStackMachine.
+ */
 class LittleManStackMachine {
 
+    // The status of the machine, "Ready", "Error", etc.
     status = "Ready"
 
+    // The memory of the machine, implicitly of size 200
     memory = []
 
+    // The output buffer of the machine
     output = []
 
+    // This is the register file for the machine, with a total of five registers
     registers = {
-        program_counter:0,
-        current_instruction:0,
-        accumulator:0,
-        stack_pointer:200,
-        return_address_pointer:99
+        program_counter:0,         // this register points to the next instruction in memory to execute
+        current_instruction:0,     // this register holds the value of the current instruction
+        accumulator:0,             // this register is the sole general purpose register
+        stack_pointer:200,         // this register points to the memory location of the top of the value stack
+        return_address_pointer:99  // this register points to the memory location of the top of the return address stack
     }
 
+    // This holds an error message if the machine is in the error state, reporting what happened
     error = null
 
+    // This callback is called when input is needed from the user.  It should return an integer.
     inputCallback = function() {
         let returnVal = prompt("Please enter a number");
         return parseInt(returnVal);
     }
 
+    // A helper method to compile Firth source all the way into loaded machine instructions in the emulator
     compile(src) {
         let compiler = new FirthCompiler();
         let compileResult = compiler.compile(src);
@@ -35,6 +45,7 @@ class LittleManStackMachine {
         }
     }
 
+    // A helper method to assemble LMSM assemebly source into loaded machine instructions in the emulator
     assemble(compiledAssembly) {
         let assembler = new LMSMAssembler();
         let assemblyResult = assembler.assemble(compiledAssembly);
@@ -42,6 +53,7 @@ class LittleManStackMachine {
         return assemblyResult.machineCode;
     }
 
+    // Compiles the given Firth source and runs it on the emulator
     compileAndRun(src) {
         let compiledAssembly = this.compile(src);
         let machine_code = this.assemble(compiledAssembly);
@@ -49,21 +61,25 @@ class LittleManStackMachine {
         this.run();
     }
 
+    // Assembles the given LMSM assembly source and runs it on the emulator
     assembleAndRun(src) {
         let machine_code = this.assemble(src);
         this.load(machine_code);
         this.run();
     }
 
+    // Loads the given machine instructions into memory
     load(instructions) {
         this.memory = instructions;
     }
 
+    // Executes a single instruction
     step() {
         this.status = "Running";
         this.executeCurrentInstruction();
     }
 
+    // Executes the current instruction if the machine is runnable
     executeCurrentInstruction() {
         if (this.status !== "Stopped") {
             this.registers.current_instruction = this.memory[this.registers.program_counter];
@@ -75,6 +91,7 @@ class LittleManStackMachine {
         }
     }
 
+    // Runs the machine, executing until an error occurs or the program halts
     run() {
         this.status = "Running";
         while (this.status === "Running") {
@@ -82,6 +99,14 @@ class LittleManStackMachine {
         }
     }
 
+    /**
+     * This is the crux of the emulator, which is responsible for interpreting a given instruction and updating
+     * the state of the machine accordingly.  LMSM Machine Code is very simple: it uses decimal values rather than
+     * binary to make it easier to understand what's going on.  But this is the same general algorithm as an emulator
+     * for a more sophisticated CPU.
+     *
+     * @param instruction
+     */
     executeInstruction(instruction) {
         if (instruction === 0) {
             this.status = "Stopped";
