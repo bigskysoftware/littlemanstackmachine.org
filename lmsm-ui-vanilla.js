@@ -64,13 +64,13 @@ class LMSMUi {
       lineNumbers: true,
       tabSize: 2,
     });
-    this.editor.setSize('100%', '50em');
+    this.editor.setSize('100%', '100%');
     this.editor.setOption('mode', 'lmsm-assembly');
     this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
       lineNumbers: true,
       tabSize: 2,
     });
-    this.firthEditor.setSize('100%', '50em');
+    this.firthEditor.setSize('100%', '100%');
     this.firthEditor.setOption('mode', 'firth');
   }
   resetEditor() {
