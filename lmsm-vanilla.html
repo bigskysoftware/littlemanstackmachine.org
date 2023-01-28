@@ -12,42 +12,119 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.js" integrity="sha512-rdFIN28+neM8H8zNsjRClhJb1fIYby2YCNmoqwnqBDEvZgpcp7MJiX8Wd+Oi6KcJOMOuvGztjrsI59rly9BsVQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
   <script src="https://unpkg.com/hyperscript.org@0.9.7"></script>
-  <script src="lmsm-vanilla.js"></script>
+  <script src="lmsm.js"></script>
   <script src="lmsm-ui-vanilla.js" defer></script>
+  <script type="text/hyperscript">
+    def syncToDOM()
+      set value of the <#pc/> to $lmsm.lmsm.registers.program_counter
+      set value of the <#acc/> to $lmsm.lmsm.registers.accumulator
+      set value of the <#ci/> to $lmsm.lmsm.registers.current_instruction
+      set value of the <#sp/> to $lmsm.lmsm.registers.stack_pointer
+      set value of the <#rap/> to $lmsm.lmsm.registers.return_address_pointer
+
+      set mem to <.memory tr input/>
+      set memArray to mem as Array
+
+      remove .program_counter from mem
+      add .program_counter to memArray[$lmsm.lmsm.registers.program_counter]
+
+      remove .stack_pointer from mem
+      if $lmsm.lmsm.registers.stack_pointer is not 200 then
+        add .stack_pointer to memArray[$lmsm.lmsm.registers.stack_pointer]
+      end
+
+      remove .return_address_pointer from mem
+      add .return_address_pointer to memArray[$lmsm.lmsm.registers.return_address_pointer]
+
+      set slots to <.memory tr input/>
+      repeat for slot in slots index i
+        set value of the slot to $lmsm.getMemory(i)
+      end
+    end
+
+    def reset()
+      js return new LMSMUi() end
+      set $lmsm to the result
+    end
+  </script>
 </head>
 
 <body class="padding riobeachonsummer">
-  <div class="grid">
+  <div class="grid" _="
+    init js return new LMSMUi() end
+    set $lmsm to the result
+    call syncToDOM()
+  ">
     <div id="titleBox" class="box center" data-cols="1 3" data-rows="1">
       <h2 class="allcaps">Little Man Stack Machine Emulator</h2>
     </div>
     <div id="codeEditorBox" class="box" data-cols="1" data-rows="2 5">
       <strong class="allcaps block titlebar">IDE</strong>
       <label for="mode">
-        <select name="mode" _="
-          on load set @value to window.lmsm.mode
-          on change call window.lmsm.setMode(my value)
+        <select id="mode" name="mode" _="
+          on change call $lmsm.setMode(my value)
         ">
-          <option value="lmsm-assembly">Assembly</option>
-          <option value="firth">Firth</option>
+          <option value="lmsm-assembly" _="
+          on load if $lmsm.mode is my value then set @selected to true end
+          ">Assembly</option>
+          <option value="firth" _="
+          on load if $lmsm.mode is my value then set @selected to true end
+          ">Firth</option>
         </select>
       </label>
-      <section class="tool-bar" x-data="{
-      }">
-        <label x-show="mode === 'firth'">
-          <input type="button" _="on click call window.lmsm.compile()" value="Compile" />
+      <section class="tool-bar">
+        <label _="
+          on load if $lmsm.mode is not 'firth' then hide me end
+          on change from #mode if $lmsm.mode is 'firth' then show me else hide me end
+        ">
+          <input type="button" _="
+            on click 
+            call $lmsm.compile()
+            call syncToDOM()
+          " value="Compile" />
         </label>
-        <label x-show="mode === 'lmsm-assembly'">
-          <input type="button" _="on click call window.lmsm.assemble()" value="Assemble" />
+        <label _="
+        on load if $lmsm.mode is not 'lmsm-assembly' then hide me end
+        on change from #mode if $lmsm.mode is 'lmsm-assembly' then show me else hide me end
+        ">
+          <input type="button" _="
+          on click
+          js return new LittleManStackMachine() end
+          set $lmsm.lmsm to the result
+          call $lmsm.resetEditor()
+          set code to $lmsm.editor.getValue()
+          set assembled to $lmsm.assemble(code)
+          call $lmsm.lmsm.load(assembled)
+          call syncToDOM()
+          " value="Assemble" />
         </label>
         <label>
-          <input type="button" _="on click call window.lmsm.run()" value="Run" />
+          <input type="button"
+          _="
+          on click 
+          call $lmsm.run()
+          call syncToDOM()
+          "
+          value="Run" />
         </label>
-        <label x-show="mode === 'lmsm-assembly'">
-          <input type="button" _="on click call window.lmsm.assembleAndRun()" value="Load & Run" />
+        <label _="
+        on load if $lmsm.mode is not 'lmsm-assembly' then hide me end
+        on change from #mode if $lmsm.mode is 'lmsm-assembly' then show me else hide me end
+        ">
+          <input type="button" _="
+          on click 
+          call $lmsm.assembleAndRun()
+          call syncToDOM()
+          " value="Load & Run" />
         </label>
-        <label x-show="mode === 'lmsm-assembly'">
-          <input type="button" _="on click call window.lmsm.step()" value="Step" />
+        <label _="
+        on load if $lmsm.mode is not 'lmsm-assembly' then hide me end
+        on change from #mode if $lmsm.mode is 'lmsm-assembly' then show me else hide me end
+        ">
+          <input type="button" _="
+            on click 
+            call $lmsm.step()
+            call syncToDOM()" value="Step" />
         </label>
       </section>
       <div id="codeEditor"></div>
@@ -57,41 +134,40 @@
       <div class="margin grid">
         <div class="box bad" data-cols="1">
           <label for="pc" class="bold">PC:
-            <input name="pc" class="register" type="text" size="3" _="
-              on load set @value to window.lmsm.getProgramCounter()
-              on changepc set my value to the value of the event
+            <input id="pc" name="pc" class="register" type="text" size="3" _="
+              on load set @value to $lmsm.getProgramCounter()
+              on change
+                call $lmsm.setProgramCounter(my value)
+                call syncToDOM()
             " />
           </label>
         </div>
         <div class="box info" data-cols="2">
           <label for="acc" class="bold">ACC:
-            <input name="acc" class="register" size="3" type="text" _="
-            on load set @value to window.lmsm.getAccumulator()
-            on changeacc set my value to the value of the event
+            <input id="acc" name="acc" class="register" size="3" type="text" _="
+            on load set @value to $lmsm.getAccumulator()
+            on change call $lmsm.setAccumulator(my value)
           " />
           </label>
         </div>
         <div class="box info" data-cols="3">
           <label for="ci" class="bold">CI:
-            <input name="ci" class="register" size="3" type="text" _="
-            on load set @value to window.lmsm.getCurrentInstruction()
-            on changeci set my value to the value of the event
+            <input id="ci" name="ci" class="register" size="3" type="text" _="
+            on load set @value to $lmsm.getCurrentInstruction()
           " />
           </label>
         </div>
         <div class="box ok" data-cols="4">
           <label for="sp" class="bold">SP:
-            <input name="sp" class="register" size="3" type="text" _="
-            on load set @value to window.lmsm.getStackPointer()
-            on changesp set my value to the value of the event
+            <input id="sp" name="sp" class="register" size="3" type="text" _="
+            on load set @value to $lmsm.getStackPointer()
           " />
           </label>
         </div>
         <div class="box warn" data-cols="5">
           <label for="rap" class="bold">RAP:
-            <input name="rap" class="register" size="3" type="text" _="
-            on load set @value to window.lmsm.getReturnAddressPointer()
-            on changerap set my value to the value of the event
+            <input id="rap" name="rap" class="register" size="3" type="text" _="
+            on load set @value to $lmsm.getReturnAddressPointer()
           " />
           </label>
         </div>
@@ -99,19 +175,1503 @@
     </div>
     <div id="memoryBox" class="box" data-cols="2" data-rows="3 5">
       <strong class="allcaps block titlebar">Memory Layout</strong>
-      <div class="center" _="
-        on load put window.lmsm.memoryLayout() into me
-      ">
+      <div class="center">
+        <table _="
+        on change
+        set mem to <.memory tr input/> as Array
+        repeat for inp in mem index i
+          set $lmsm.lmsm.memory[i] to the value of the inp
+        end
+        ">
+          <caption></caption>
+          <thead>
+            <th></th>
+            <th>0</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th>5</th>
+            <th>6</th>
+            <th>7</th>
+            <th>8</th>
+            <th>9</th>
+          </thead>
+          <tbody class="memory">
+            <tr>
+              <td class="bold">0</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">10</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">20</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">30</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">40</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">50</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">60</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">70</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">80</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">90</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">100</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">110</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">120</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">130</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">140</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">150</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">160</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">170</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">180</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+            <tr>
+              <td class="bold">190</td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+              <td class="memorySlot">
+                <label>
+                  <input 
+                    size="3" 
+                    type="text"/>
+                </label>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
     <div id="outputBox" class="box" data-cols="3" data-rows="2 5">
       <strong class="allcaps block titlebar">Output</strong>
-      <input type="button" @click="lmsm.clearOutput()" value="Clear" />
+      <input type="button" _="on click $lmsm.clearOutput()" value="Clear" />
       <div id="outputPane" class="box pane" 
-        _="on mutation of childList me.scroll({top: my scrollHeight, left: 0, behavior: 'smooth'})">
-        <template x-for="line in lmsm.output">
-          <div x-text="line"></div>
-        </template>
+        _="
+        on output:append(timestamp, entry)
+          put the entry into me
+        on mutation of childList 
+          me.scroll({top: my scrollHeight, left: 0, behavior: 'smooth'})
+      ">
       </div>
     </div>
   </div>
