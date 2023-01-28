@@ -16,25 +16,25 @@
   <script src="lmsm-ui-vanilla.js" defer></script>
   <script type="text/hyperscript">
     def syncToDOM()
-      set value of the <#pc/> to $lmsm.lmsm.registers.program_counter
-      set value of the <#acc/> to $lmsm.lmsm.registers.accumulator
-      set value of the <#ci/> to $lmsm.lmsm.registers.current_instruction
-      set value of the <#sp/> to $lmsm.lmsm.registers.stack_pointer
-      set value of the <#rap/> to $lmsm.lmsm.registers.return_address_pointer
+      set value of the <#pc/> to $lmsm.getProgramCounter()
+      set value of the <#acc/> to $lmsm.getAccumulator()
+      set value of the <#ci/> to $lmsm.getCurrentInstruction()
+      set value of the <#sp/> to $lmsm.getStackPointer()
+      set value of the <#rap/> to $lmsm.getReturnAddressPointer()
 
       set mem to <.memory tr input/>
       set memArray to mem as Array
 
       remove .program_counter from mem
-      add .program_counter to memArray[$lmsm.lmsm.registers.program_counter]
+      add .program_counter to memArray[$lmsm.getProgramCounter()]
 
       remove .stack_pointer from mem
-      if $lmsm.lmsm.registers.stack_pointer is not 200 then
-        add .stack_pointer to memArray[$lmsm.lmsm.registers.stack_pointer]
+      if $lmsm.getStackPointer() is not 200 then
+        add .stack_pointer to memArray[$lmsm.getStackPointer()]
       end
 
       remove .return_address_pointer from mem
-      add .return_address_pointer to memArray[$lmsm.lmsm.registers.return_address_pointer]
+      add .return_address_pointer to memArray[$lmsm.getReturnAddressPointer()]
 
       set slots to <.memory tr input/>
       repeat for slot in slots index i
@@ -89,8 +89,7 @@
         ">
           <input type="button" _="
           on click
-          js return new LittleManStackMachine() end
-          set $lmsm.lmsm to the result
+          call $lmsm.resetMachine()
           call $lmsm.resetEditor()
           set code to $lmsm.editor.getValue()
           set assembled to $lmsm.assemble(code)
@@ -178,7 +177,7 @@
         on change
         set mem to <.memory tr input/> as Array
         repeat for inp in mem index i
-          set $lmsm.lmsm.memory[i] to the value of the inp
+          call $lmsm.setMemory(i, the value of the inp)
         end
         ">
           <caption></caption>

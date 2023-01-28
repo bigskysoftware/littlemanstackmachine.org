@@ -164,8 +164,7 @@ class LMSMUi {
   }
 
   setMemory(position, value) {
-    this.lmsm.setMemory(position, value);
-    document.querySelector("")
+    this.lmsm.memory[position] = value;
   }
 
   cellClass(mempos) {
@@ -176,6 +175,10 @@ class LMSMUi {
     else if (this.lmsm.registers.return_address_pointer === mempos)
       return 'memory_slot return_address_pointer'
     else return 'memory_slot';
+  }
+
+  resetMachine() {
+    this.lmsm = new LittleManStackMachine();
   }
 
 }
