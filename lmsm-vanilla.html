@@ -58,35 +58,10 @@
     <div id="titleBox" class="box center" data-cols="1 3" data-rows="1">
       <h2 class="allcaps">Little Man Stack Machine Emulator</h2>
     </div>
-    <div id="codeEditorBox" class="box" data-cols="1" data-rows="2 5">
-      <strong class="allcaps block titlebar">IDE</strong>
-      <label for="mode">
-        <select id="mode" name="mode" _="
-          on change call $lmsm.setMode(my value)
-        ">
-          <option value="lmsm-assembly" _="
-          on load if $lmsm.mode is my value then set @selected to true end
-          ">Assembly</option>
-          <option value="firth" _="
-          on load if $lmsm.mode is my value then set @selected to true end
-          ">Firth</option>
-        </select>
-      </label>
+    <div id="codeEditorBox" class="box" data-cols="2" data-rows="2 5">
+      <strong class="allcaps block titlebar">Assembly</strong>
       <section class="tool-bar">
-        <label _="
-          on load if $lmsm.mode is not 'firth' then hide me end
-          on change from #mode if $lmsm.mode is 'firth' then show me else hide me end
-        ">
-          <input type="button" _="
-            on click 
-            call $lmsm.compile()
-            call syncToDOM()
-          " value="Compile" />
-        </label>
-        <label _="
-        on load if $lmsm.mode is not 'lmsm-assembly' then hide me end
-        on change from #mode if $lmsm.mode is 'lmsm-assembly' then show me else hide me end
-        ">
+        <label>
           <input type="button" _="
           on click
           call $lmsm.resetMachine()
@@ -104,29 +79,43 @@
           call syncToDOM()
           " value="Run" />
         </label>
-        <label _="
-        on load if $lmsm.mode is not 'lmsm-assembly' then hide me end
-        on change from #mode if $lmsm.mode is 'lmsm-assembly' then show me else hide me end
-        ">
+        <label>
           <input type="button" _="
           on click 
           call $lmsm.assembleAndRun()
           call syncToDOM()
           " value="Load & Run" />
         </label>
-        <label _="
-        on load if $lmsm.mode is not 'lmsm-assembly' then hide me end
-        on change from #mode if $lmsm.mode is 'lmsm-assembly' then show me else hide me end
-        ">
+        <label>
           <input type="button" _="
             on click 
             call $lmsm.step()
             call syncToDOM()" value="Step" />
         </label>
       </section>
-      <div id="codeEditor"></div>
+      <textarea id="codeEditor"></textarea>
     </div>
-    <div id="registerFileBox" class="box" data-cols="2" data-rows="2">
+    <div id="codeEditorBoxFirth" class="box" data-cols="1" data-rows="2 5">
+      <strong class="allcaps block titlebar">Firth</strong>
+      <section class="tool-bar">
+        <label>
+          <input type="button" _="
+            on click 
+            call $lmsm.compile()
+            call syncToDOM()
+          " value="Compile" />
+        </label>
+        <label>
+          <input type="button" _="
+          on click 
+          call $lmsm.run()
+          call syncToDOM()
+          " value="Run" />
+        </label>
+      </section>
+      <textarea id="codeEditorFirth"></textarea>
+    </div>
+    <div id="registerFileBox" class="box" data-cols="3" data-rows="2">
       <strong class="allcaps block titlebar">Register File</strong>
       <div class="margin grid">
         <div class="box bad" data-cols="1">
@@ -170,7 +159,7 @@
         </div>
       </div>
     </div>
-    <div id="memoryBox" class="box" data-cols="2" data-rows="3 5">
+    <div id="memoryBox" class="box" data-cols="3" data-rows="3 5">
       <strong class="allcaps block titlebar">Memory Layout</strong>
       <div class="center">
         <table _="
@@ -1259,7 +1248,7 @@
         </table>
       </div>
     </div>
-    <div id="outputBox" class="box" data-cols="3" data-rows="2 5">
+    <div id="outputBox" class="box" data-cols="4" data-rows="2 5">
       <strong class="allcaps block titlebar">Output</strong>
       <input type="button" _="on click set #outputPane.innerHTML to ''" value="Clear" />
       <div id="outputPane" class="box pane" _="

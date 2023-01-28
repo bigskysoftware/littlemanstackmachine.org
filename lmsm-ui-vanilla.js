@@ -2,8 +2,8 @@ class LMSMUi {
 
   lmsm = null;
   editor = null;
+  firthEditor = null;
   assembled = null;
-  mode = 'firth';
   currentLineNumber = -1;
 
   static makeLMSM() {
@@ -60,16 +60,18 @@ class LMSMUi {
         },
       ],
     });
-    this.editor = CodeMirror(document.querySelector('#codeEditor'), {
+    this.editor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
       lineNumbers: true,
       tabSize: 2,
     });
     this.editor.setSize('100%', '50em');
-    this.editor.setOption('mode', this.mode);
-  }
-  setMode(mode) {
-    this.mode = mode;
-    this.editor.setOption('mode', this.mode);
+    this.editor.setOption('mode', 'lmsm-assembly');
+    this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
+      lineNumbers: true,
+      tabSize: 2,
+    });
+    this.firthEditor.setSize('100%', '50em');
+    this.firthEditor.setOption('mode', 'firth');
   }
   resetEditor() {
     if (this.currentLineNumber !== -1) {
@@ -80,8 +82,9 @@ class LMSMUi {
   compile() {
     this.lmsm = LMSMUi.makeLMSM();
     this.resetEditor();
-    const code = this.editor.getValue();
+    const code = this.firthEditor.getValue();
     const compiled = this.lmsm.compile(code);
+    this.editor.setValue(compiled);
     this.assembled = this.lmsm.assemble(compiled);
     this.lmsm.load(this.assembled);
   }
