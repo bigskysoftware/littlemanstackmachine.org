@@ -64,13 +64,13 @@ class LMSMUi {
       lineNumbers: true,
       tabSize: 2,
     });
-    this.editor.setSize('100%', '100%');
+    this.editor.setSize('100%', '25em');
     this.editor.setOption('mode', 'lmsm-assembly');
     this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
       lineNumbers: true,
       tabSize: 2,
     });
-    this.firthEditor.setSize('100%', '100%');
+    this.firthEditor.setSize('100%', '25em');
     this.firthEditor.setOption('mode', 'firth');
   }
   resetEditor() {
@@ -113,10 +113,25 @@ class LMSMUi {
     if (this.lmsm.status === "Stopped") {
       this.resetEditor();
       this.setProgramCounter(0);
-      this.lmsm.status = "Reeady";
+      this.lmsm.status = "Ready";
     }
     if (this.currentLineNumber !== -1) {
       this.editor.getDoc()
+        .removeLineClass(this.currentLineNumber, 'background', 'markCode');
+      this.lmsm.step();
+    }
+    this.currentLineNumber++;
+    this.editor.getDoc()
+      .addLineClass(this.currentLineNumber, 'background', 'markCode');
+  }
+  stepFirth() {
+    if (this.lmsm.status === "Stopped") {
+      this.resetEditor();
+      this.setProgramCounter(0);
+      this.lmsm.status = "Ready";
+    }
+    if (this.currentLineNumber !== -1) {
+      this.firthEditor.getDoc()
         .removeLineClass(this.currentLineNumber, 'background', 'markCode');
       this.lmsm.step();
     }
