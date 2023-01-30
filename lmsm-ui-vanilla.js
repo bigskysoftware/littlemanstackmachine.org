@@ -3,13 +3,11 @@ class LMSMUi {
   lmsm = null;
   asmEditor = null;
   firthEditor = null;
-  assembled = null;
   currentLineNumber = -1;
 
   static makeLMSM() {
     const lmsm = new LittleManStackMachine();
     lmsm.outputFunction = (value) => {
-      console.log(value);
       const elem = document.querySelector("#outputPane");
       const event = new CustomEvent("output:append", {
         detail: {
@@ -37,6 +35,13 @@ class LMSMUi {
       ],
     });
 
+    this.asmEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
+      lineNumbers: true,
+      tabSize: 2,
+    });
+    this.asmEditor.setSize('100%', '25em');
+    this.asmEditor.setOption('mode', 'lmsm-assembly');
+
     CodeMirror.defineSimpleMode('firth', {
       start: [
         {
@@ -62,14 +67,6 @@ class LMSMUi {
         },
       ],
     });
-
-    this.asmEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
-      lineNumbers: true,
-      tabSize: 2,
-    });
-    this.asmEditor.setSize('100%', '25em');
-    this.asmEditor.setOption('mode', 'lmsm-assembly');
-
     this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
       lineNumbers: true,
       tabSize: 2,
@@ -89,17 +86,16 @@ class LMSMUi {
     const code = this.firthEditor.getValue();
     const compiled = this.lmsm.compile(code);
     this.asmEditor.setValue(compiled);
-    this.assembled = this.lmsm.assemble(compiled);
-    this.lmsm.load(this.assembled);
+    const assembled = this.lmsm.assemble(compiled);
+    this.lmsm.load(assembled);
   }
   assemble() {
     this.lmsm = LMSMUi.makeLMSM();
-    // this.resetMachine();
     this.resetEditor();
     const code = this.asmEditor.getValue();
-    this.assembled = this.lmsm.assemble(code);
-    this.lmsm.load(this.assembled);
-    return this.assembled;
+    const assembled = this.lmsm.assemble(code);
+    this.lmsm.load(assembled);
+    return assembled;
   }
   run() {
     if (this.lmsm.status === 'Stopped') {
@@ -115,6 +111,7 @@ class LMSMUi {
     this.lmsm.assembleAndRun(code);
   }
   step() {
+    if (this.asmEditor.getValue() === "") return;
     if (this.lmsm.status === "Stopped") {
       this.resetEditor();
       this.setProgramCounter(0);
@@ -157,7 +154,6 @@ class LMSMUi {
   }
   setAccumulator(value) {
     this.lmsm.registers.accumulator = value;
-    console.log(value);
   }
 
   getCurrentInstruction() {

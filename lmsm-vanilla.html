@@ -1257,7 +1257,6 @@
       <input type="button" _="on click set #outputPane.innerHTML to ''" value="Clear" />
       <div id="outputPane" class="box pane" _="
         on output:append(timestamp, entry)
-          log entry
           set my.innerHTML to my.innerHTML + entry + '<br/>'
         on mutation of childList 
           me.scroll({top: my scrollHeight, left: 0, behavior: 'smooth'})
