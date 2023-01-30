@@ -3,7 +3,7 @@ class LMSMUi {
   lmsm = null;
   asmEditor = null;
   firthEditor = null;
-  currentLineNumber = -1;
+  currentAsmLineNumber = -1;
 
   static makeLMSM() {
     const lmsm = new LittleManStackMachine();
@@ -75,10 +75,10 @@ class LMSMUi {
     this.firthEditor.setOption('mode', 'firth');
   }
   resetEditor() {
-    if (this.currentLineNumber !== -1) {
-      this.asmEditor.getDoc().removeLineClass(this.currentLineNumber, 'background', 'markCode');
+    if (this.currentAsmLineNumber !== -1) {
+      this.asmEditor.getDoc().removeLineClass(this.currentAsmLineNumber, 'background', 'markCode');
     }
-    this.currentLineNumber = -1;
+    this.currentAsmLineNumber = -1;
   }
   compile() {
     this.lmsm = LMSMUi.makeLMSM();
@@ -117,14 +117,14 @@ class LMSMUi {
       this.setProgramCounter(0);
       this.lmsm.status = "Ready";
     }
-    if (this.currentLineNumber !== -1) {
+    if (this.currentAsmLineNumber !== -1) {
       this.asmEditor.getDoc()
-        .removeLineClass(this.currentLineNumber, 'background', 'markCode');
+        .removeLineClass(this.currentAsmLineNumber, 'background', 'markCode');
       this.lmsm.step();
     }
-    this.currentLineNumber++;
+    this.currentAsmLineNumber++;
     this.asmEditor.getDoc()
-      .addLineClass(this.currentLineNumber, 'background', 'markCode');
+      .addLineClass(this.currentAsmLineNumber, 'background', 'markCode');
   }
   stepFirth() {
     if (this.lmsm.status === "Stopped") {
@@ -132,14 +132,14 @@ class LMSMUi {
       this.setProgramCounter(0);
       this.lmsm.status = "Ready";
     }
-    if (this.currentLineNumber !== -1) {
+    if (this.currentAsmLineNumber !== -1) {
       this.firthEditor.getDoc()
-        .removeLineClass(this.currentLineNumber, 'background', 'markCode');
+        .removeLineClass(this.currentAsmLineNumber, 'background', 'markCode');
       this.lmsm.step();
     }
-    this.currentLineNumber++;
+    this.currentAsmLineNumber++;
     this.asmEditor.getDoc()
-      .addLineClass(this.currentLineNumber, 'background', 'markCode');
+      .addLineClass(this.currentAsmLineNumber, 'background', 'markCode');
   }
   getProgramCounter() {
     return this.lmsm.registers.program_counter;
