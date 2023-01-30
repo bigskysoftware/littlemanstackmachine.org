@@ -41,17 +41,13 @@
         set value of the slot to $lmsm.getMemory(i)
       end
     end
-
-    def reset()
-      js return new LMSMUi() end
-      set $lmsm to the result
-    end
   </script>
 </head>
 
 <body class="padding riobeachonsummer">
   <div class="grid" _="
-    init js return new LMSMUi() end
+    init
+    js return new LMSMUi() end
     set $lmsm to the result
     call syncToDOM()
   ">
@@ -93,11 +89,7 @@
         <label>
           <input type="button" _="
           on click
-          call $lmsm.resetMachine()
-          call $lmsm.resetEditor()
-          set code to $lmsm.editor.getValue()
-          set assembled to $lmsm.assemble(code)
-          call $lmsm.lmsm.load(assembled)
+          call $lmsm.assemble()
           call syncToDOM()
           " value="Assemble" />
         </label>
