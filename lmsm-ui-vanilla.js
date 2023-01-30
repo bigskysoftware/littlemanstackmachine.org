@@ -9,6 +9,7 @@ class LMSMUi {
   static makeLMSM() {
     const lmsm = new LittleManStackMachine();
     lmsm.outputFunction = (value) => {
+      console.log(value);
       const elem = document.querySelector("#outputPane");
       const event = new CustomEvent("output:append", {
         detail: {
@@ -92,7 +93,8 @@ class LMSMUi {
     this.lmsm.load(this.assembled);
   }
   assemble() {
-    this.resetMachine();
+    this.lmsm = LMSMUi.makeLMSM();
+    // this.resetMachine();
     this.resetEditor();
     const code = this.asmEditor.getValue();
     this.assembled = this.lmsm.assemble(code);
@@ -155,6 +157,7 @@ class LMSMUi {
   }
   setAccumulator(value) {
     this.lmsm.registers.accumulator = value;
+    console.log(value);
   }
 
   getCurrentInstruction() {
