@@ -45,17 +45,13 @@
         set value of the slot to $lmsm.getMemory(i)
       end
     end
-
-    def reset()
-      js return new LMSMUi() end
-      set $lmsm to the result
-    end
   </script>
 </head>
 
 <body class="padding riobeachonsummer">
   <div class="grid" _="
-    init js return new LMSMUi() end
+    init
+    js return new LMSMUi() end
     set $lmsm to the result
     call syncToDOM()
   ">
@@ -83,11 +79,7 @@
         <label>
           <input type="button" _="
           on click
-          call $lmsm.resetMachine()
-          call $lmsm.resetEditor()
-          set code to $lmsm.editor.getValue()
-          set assembled to $lmsm.assemble(code)
-          call $lmsm.lmsm.load(assembled)
+          call $lmsm.assemble()
           call syncToDOM()
           " value="Assemble" />
         </label>
@@ -120,7 +112,7 @@
         <div class="box bad" data-cols="1">
           <label for="pc" class="bold">PC:
             <input id="pc" name="pc" class="register" type="text" size="3" _="
-              on load set @value to $lmsm.getProgramCounter()
+              on load set my value to $lmsm.getProgramCounter()
               on change
                 call $lmsm.setProgramCounter(my value)
                 call syncToDOM()
@@ -130,7 +122,7 @@
         <div class="box info" data-cols="2">
           <label for="acc" class="bold">ACC:
             <input id="acc" name="acc" class="register" size="3" type="text" _="
-            on load set @value to $lmsm.getAccumulator()
+            on load set my value to $lmsm.getAccumulator()
             on change call $lmsm.setAccumulator(my value)
           " />
           </label>
@@ -138,21 +130,24 @@
         <div class="box info" data-cols="3">
           <label for="ci" class="bold">CI:
             <input id="ci" name="ci" class="register" size="3" type="text" _="
-            on load set @value to $lmsm.getCurrentInstruction()
+            on load set my value to $lmsm.getCurrentInstruction()
+            on change call $lmsm.setCurrentInstruction(my value)
           " />
           </label>
         </div>
         <div class="box ok" data-cols="4">
           <label for="sp" class="bold">SP:
             <input id="sp" name="sp" class="register" size="3" type="text" _="
-            on load set @value to $lmsm.getStackPointer()
+            on load set my value to $lmsm.getStackPointer()
+            on change call $lmsm.setStackPointer(my value)
           " />
           </label>
         </div>
         <div class="box warn" data-cols="5">
           <label for="rap" class="bold">RAP:
             <input id="rap" name="rap" class="register" size="3" type="text" _="
-            on load set @value to $lmsm.getReturnAddressPointer()
+            on load set my value to $lmsm.getReturnAddressPointer()
+            on change call $lmsm.setReturnAddressPointer(my value)
           " />
           </label>
         </div>

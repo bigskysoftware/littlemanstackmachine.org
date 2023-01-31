@@ -1,7 +1,7 @@
 class LMSMUi {
 
   lmsm = null;
-  assemblyEditor = null;
+  asmEditor = null;
   firthEditor = null;
   assembled = null;
   firthSourceMap = null;
@@ -27,7 +27,7 @@ class LMSMUi {
     CodeMirror.defineSimpleMode('lmsm-assembly', {
       start: [
         {
-          regex: /(?:DAT|ADD|SUB|STA|LDI|LDA|BRA|BRZ|BRP|NOOP|INP|OUT|SPUSH|SPOP|SDUP|SDROP|SSWAP|SADD|SSUB|SMUL|SDIV|SMAX|SMIN|JAL|RET|HLT|dat|add|sub|sta|ldi|lda|bra|brz|brp|noop|inp|out|spush|spop|sdup|sdrop|sswap|sadd|ssub|smul|sdiv|smax|smin|jal|ret|hlt)\b/,
+          regex: /(?:CALL|DAT|ADD|SUB|STA|LDI|LDA|BRA|BRZ|BRP|NOOP|INP|OUT|SPUSH|SPOP|SDUP|SDROP|SSWAP|SADD|SSUB|SMUL|SDIV|SMAX|SMIN|JAL|RET|HLT)\b/,
           token: 'keyword'
         },
         {
@@ -36,6 +36,14 @@ class LMSMUi {
         },
       ],
     });
+
+    this.asmEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
+      lineNumbers: true,
+      tabSize: 2,
+    });
+    this.asmEditor.setSize('100%', '25em');
+    this.asmEditor.setOption('mode', 'lmsm-assembly');
+
     CodeMirror.defineSimpleMode('firth', {
       start: [
         {
@@ -61,12 +69,13 @@ class LMSMUi {
         },
       ],
     });
-    this.assemblyEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
+    this.asmEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
       lineNumbers: true,
       tabSize: 2,
     });
-    this.assemblyEditor.setSize('100%', '25em');
-    this.assemblyEditor.setOption('mode', 'lmsm-assembly');
+    // TODO asm linter
+    this.asmEditor.setSize('100%', '25em');
+    this.asmEditor.setOption('mode', 'lmsm-assembly');
     this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
       lineNumbers: true,
       tabSize: 2,
@@ -114,14 +123,12 @@ class LMSMUi {
       }
       return;
     }
-    // TODO display errors
 
     this.firthSourceMap = compileResult.sourceMap;
-    this.assemblyEditor.setValue(compileResult.assembly);
+    this.asmEditor.setValue(compileResult.assembly);
 
     let assembler = new LMSMAssembler();
     let assemblyResult = assembler.assemble(compileResult.assembly);
-    // TODO display errors
 
     this.assembled = this.lmsm.assemble(compileResult.assembly);
 
@@ -132,7 +139,7 @@ class LMSMUi {
   assemble() {
     this.lmsm = LMSMUi.makeLMSM();
     this.resetEditor();
-    const code = this.assemblyEditor.getValue();
+    const code = this.asmEditor.getValue();
     this.assembled = this.lmsm.assemble(code);
     this.lmsm.load(this.assembled);
     return this.assembled;
@@ -163,7 +170,7 @@ class LMSMUi {
   assembleAndRun() {
     this.lmsm = LMSMUi.makeLMSM();
     this.resetEditor();
-    const code = this.assemblyEditor.getValue();
+    const code = this.asmEditor.getValue();
     this.lmsm.assembleAndRun(code);
   }
 
@@ -180,12 +187,12 @@ class LMSMUi {
     let currentProgramCounter = this.lmsm.registers.program_counter;
 
     if (this.lastActiveAssemblyLine != null) {
-      this.assemblyEditor.getDoc()
+      this.asmEditor.getDoc()
           .removeLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
     }
     if (this.assemblySourceMap) {
       this.lastActiveAssemblyLine = this.assemblySourceMap[currentProgramCounter] - 1;
-      this.assemblyEditor.getDoc()
+      this.asmEditor.getDoc()
           .addLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
     }
 
