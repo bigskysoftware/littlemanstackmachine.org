@@ -1,14 +1,15 @@
 class LMSMUi {
 
   lmsm = null;
-  editor = null;
+  assemblyEditor = null;
   firthEditor = null;
   assembled = null;
-  currentLineNumber = -1;
+  firthSourceMap = null;
+  assemblySourceMap = null;
 
   static makeLMSM() {
     const lmsm = new LittleManStackMachine();
-    lmsm.outputFunction = (value) => {
+    lmsm.outputCallback = (value) => {
       const elem = document.querySelector("#outputPane");
       const event = new CustomEvent("output:append", {
         detail: {
@@ -60,85 +61,146 @@ class LMSMUi {
         },
       ],
     });
-    this.editor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
+    this.assemblyEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
       lineNumbers: true,
       tabSize: 2,
     });
-    this.editor.setSize('100%', '25em');
-    this.editor.setOption('mode', 'lmsm-assembly');
+    this.assemblyEditor.setSize('100%', '25em');
+    this.assemblyEditor.setOption('mode', 'lmsm-assembly');
     this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
       lineNumbers: true,
       tabSize: 2,
+      lint: {
+        getAnnotations : (x) => {
+          let diagnostics = []
+          if (this.firthEditor) {
+            let compiler = new FirthCompiler();
+            let compileResult = compiler.compile(this.firthEditor.getValue());
+            for (const error of compileResult.errors) {
+              diagnostics.push({
+                from: {
+                  line: error.token.line - 1,
+                  ch: error.token.lineOffset
+                },
+                to: {
+                  line: error.token.line - 1,
+                  ch: error.token.lineOffsetEnd
+                },
+                message: error.message,
+                severity: "error"
+              })
+            }
+          }
+          return diagnostics
+        }},
     });
     this.firthEditor.setSize('100%', '25em');
     this.firthEditor.setOption('mode', 'firth');
   }
   resetEditor() {
-    if (this.currentLineNumber !== -1) {
-      this.editor.getDoc().removeLineClass(this.currentLineNumber, 'background', 'markCode');
-    }
-    this.currentLineNumber = -1;
   }
+
   compile() {
     this.lmsm = LMSMUi.makeLMSM();
     this.resetEditor();
     const code = this.firthEditor.getValue();
-    const compiled = this.lmsm.compile(code);
-    this.editor.setValue(compiled);
-    this.assembled = this.lmsm.assemble(compiled);
-    this.lmsm.load(this.assembled);
+
+    let compiler = new FirthCompiler();
+    let compileResult = compiler.compile(code);
+    if (compileResult.errors.length > 0) {
+      console.error("Compilation Errors:")
+      for (const err of compileResult.errors) {
+        console.error(err)
+      }
+      return;
+    }
+    // TODO display errors
+
+    this.firthSourceMap = compileResult.sourceMap;
+    this.assemblyEditor.setValue(compileResult.assembly);
+
+    let assembler = new LMSMAssembler();
+    let assemblyResult = assembler.assemble(compileResult.assembly);
+    // TODO display errors
+
+    this.assembled = this.lmsm.assemble(compileResult.assembly);
+
+    this.assemblySourceMap = assemblyResult.sourceMap;
+    this.lmsm.load(assemblyResult.machineCode);
   }
+
   assemble() {
     this.lmsm = LMSMUi.makeLMSM();
     this.resetEditor();
-    const code = this.editor.getValue();
+    const code = this.assemblyEditor.getValue();
     this.assembled = this.lmsm.assemble(code);
     this.lmsm.load(this.assembled);
     return this.assembled;
   }
-  run() {
+
+  run(step) {
+    step ||= 0;
     if (this.lmsm.status === 'Stopped') {
+      // TODO reset registers & upper memory?
       this.setProgramCounter(0);
       this.lmsm.status = "Ready";
     }
-    this.lmsm.run();
+
+    this.step()
+    syncToDOM();
+    if (step > 100) {
+      let cont = confirm("100 steps have been made, continue executing?");
+      if (!cont) {
+        return;
+      }
+    }
+
+    setTimeout(() => {
+      this.run(step + 1);
+    }, 750);
   }
+
   assembleAndRun() {
     this.lmsm = LMSMUi.makeLMSM();
     this.resetEditor();
-    const code = this.editor.getValue();
+    const code = this.assemblyEditor.getValue();
     this.lmsm.assembleAndRun(code);
   }
+
   step() {
+
     if (this.lmsm.status === "Stopped") {
       this.resetEditor();
       this.setProgramCounter(0);
       this.lmsm.status = "Ready";
     }
-    if (this.currentLineNumber !== -1) {
-      this.editor.getDoc()
-        .removeLineClass(this.currentLineNumber, 'background', 'markCode');
-      this.lmsm.step();
+
+    this.lmsm.step();
+
+    let currentProgramCounter = this.lmsm.registers.program_counter;
+
+    if (this.lastActiveAssemblyLine != null) {
+      this.assemblyEditor.getDoc()
+          .removeLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
     }
-    this.currentLineNumber++;
-    this.editor.getDoc()
-      .addLineClass(this.currentLineNumber, 'background', 'markCode');
-  }
-  stepFirth() {
-    if (this.lmsm.status === "Stopped") {
-      this.resetEditor();
-      this.setProgramCounter(0);
-      this.lmsm.status = "Ready";
+    if (this.assemblySourceMap) {
+      this.lastActiveAssemblyLine = this.assemblySourceMap[currentProgramCounter] - 1;
+      this.assemblyEditor.getDoc()
+          .addLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
     }
-    if (this.currentLineNumber !== -1) {
+
+    if (this.lastActiveFirthLine != null) {
       this.firthEditor.getDoc()
-        .removeLineClass(this.currentLineNumber, 'background', 'markCode');
-      this.lmsm.step();
+          .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
     }
-    this.currentLineNumber++;
-    this.editor.getDoc()
-      .addLineClass(this.currentLineNumber, 'background', 'markCode');
+
+    if (this.firthSourceMap && this.lastActiveAssemblyLine != null) {
+      this.lastActiveFirthLine = this.firthSourceMap[this.lastActiveAssemblyLine + 1] - 1;
+      this.firthEditor.getDoc()
+          .addLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+    }
   }
+
   getProgramCounter() {
     return this.lmsm.registers.program_counter;
   }

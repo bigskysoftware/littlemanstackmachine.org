@@ -12,8 +12,6 @@ class LittleManStackMachine {
     // The output buffer of the machine
     output = []
     
-    outputFunction = (value) => {}
-
     // This is the register file for the machine, with a total of five registers
     registers = {
         program_counter:0,         // this register points to the next instruction in memory to execute
@@ -31,6 +29,12 @@ class LittleManStackMachine {
         let returnVal = prompt("Please enter a number");
         return parseInt(returnVal);
     }
+
+    // This callback is called when an output is emitted by the emulator.
+    outputCallback = (value) => {}
+
+    // This callback is called when the emulator is updated.
+    updateCallback = () => {}
 
     // A helper method to compile Firth source all the way into loaded machine instructions in the emulator
     compile(src) {
@@ -91,6 +95,7 @@ class LittleManStackMachine {
         if (this.status === "Error") {
             console.error("Error : " + this.error);
         }
+        this.updateCallback()
     }
 
     // Runs the machine, executing until an error occurs or the program halts
@@ -138,7 +143,7 @@ class LittleManStackMachine {
         } else if (instruction === 902) {
             console.log(this.registers.accumulator + " ");
             this.output.push(this.registers.accumulator);
-            this.outputFunction(this.registers.accumulator);
+            this.outputCallback(this.registers.accumulator);
         } else if (instruction === 910) {
             this.registers.return_address_pointer++;
             this.memory[this.registers.return_address_pointer] = this.registers.program_counter;
@@ -266,6 +271,7 @@ class LMSMTokenizer {
     consumeChar() {
         let current = this.currentChar();
         this.offset++;
+        this.lineOffset++;
         return current;
     }
 
@@ -282,6 +288,7 @@ class LMSMTokenizer {
             }
             token.value += this.consumeChar()
         }
+        token.lineOffsetEnd = this.lineOffset;
         this.tokens.push(token);
     }
 
@@ -498,7 +505,12 @@ class FirthCompiler {
             errors ||= []
             for (const elt of elements) {
                 if (elt.error) {
-                    errors.push(elt.error);
+                    errors.push(
+                        {
+                            token: elt.token,
+                            message: elt.error
+                        }
+                    );
                 }
                 this.collectErrors(elt.body, errors);
                 this.collectErrors(elt.trueBranch, errors);
@@ -717,10 +729,16 @@ class FirthCompiler {
 
     parseVariableWrite() {
         if (this.currentTokenMatches(this.VARIABLE_WRITE_PATTERN)) {
-            return {
+            let token = this.takeToken();
+            let variableWrite = {
                 type: "VariableWrite",
-                token: this.takeToken(),
+                token: token,
+                name: token.value.substring(0, token.value.length - 1)
+            };
+            if (!this.variables.includes(variableWrite.name)) {
+                variableWrite.error = "No variable named " + variableWrite.name + " found!";
             }
+            return variableWrite
         }
     }
 
@@ -908,9 +926,10 @@ class FirthCompiler {
             code.add("BRA END_LOOP_" + element.loop.loopCount, element.token);
         } else if (element.type === "VariableRead") {
             code.add("LDA " + element.token.value, element.token);
+            code.add("SPUSH", element.token);
         } else if (element.type === "VariableWrite") {
-            let varName = element.token.value;
-            let variableName = varName.substring(0, varName.length - 1);
+            let variableName = element.name;
+            code.add("SPOP", element.token);
             code.add("STA " + variableName, element.token);
         } else if (element.type === "VariableDeclaration") {
             code.add(element.name + " DAT 0");

@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="lmsm.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.js" integrity="sha512-rdFIN28+neM8H8zNsjRClhJb1fIYby2YCNmoqwnqBDEvZgpcp7MJiX8Wd+Oi6KcJOMOuvGztjrsI59rly9BsVQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/lint/lint.min.css" integrity="sha512-jP1+o6s94WQS9boYeDP3Azh8ihI5BxGgBZNjkABhx05MqH5WuDzfzSnoPxGxVzWi/gxxVHZHvWkdRM6SMy5B0Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/lint/lint.js" defer></script>
   <script src="https://unpkg.com/hyperscript.org@0.9.7"></script>
   <script src="lmsm.js"></script>
   <script src="lmsm-ui-vanilla.js" defer></script>
@@ -29,12 +31,14 @@
       add .program_counter to memArray[$lmsm.getProgramCounter()]
 
       remove .stack_pointer from mem
-      if $lmsm.getStackPointer() is not 200 then
+      if $lmsm.getStackPointer() is less than 200 then
         add .stack_pointer to memArray[$lmsm.getStackPointer()]
       end
 
       remove .return_address_pointer from mem
-      add .return_address_pointer to memArray[$lmsm.getReturnAddressPointer()]
+      if $lmsm.getReturnAddressPointer() is greater than 100 then
+        add .return_address_pointer to memArray[$lmsm.getReturnAddressPointer()]
+      end
 
       set slots to <.memory tr input/>
       repeat for slot in slots index i
@@ -68,20 +72,6 @@
             call $lmsm.compile()
             call syncToDOM()
           " value="Compile" />
-          </label>
-          <label>
-            <input type="button" _="
-          on click 
-          call $lmsm.run()
-          call syncToDOM()
-          " value="Run" />
-          </label>
-          <label>
-            <input type="button" _="
-          on click 
-          call $lmsm.stepFirth()
-          call syncToDOM()
-          " value="Step" />
           </label>
         </section>
         <textarea id="codeEditorFirth"></textarea>
