@@ -6,6 +6,8 @@ class LMSMUi {
   assembled = null;
   firthSourceMap = null;
   assemblySourceMap = null;
+  speed = 500;
+  pauseNextTick = false;
 
   static makeLMSM() {
     const lmsm = new LittleManStackMachine();
@@ -41,8 +43,10 @@ class LMSMUi {
       lineNumbers: true,
       tabSize: 2,
     });
+    // TODO - ASM Linter
     this.asmEditor.setSize('100%', '25em');
     this.asmEditor.setOption('mode', 'lmsm-assembly');
+
 
     CodeMirror.defineSimpleMode('firth', {
       start: [
@@ -69,13 +73,7 @@ class LMSMUi {
         },
       ],
     });
-    this.asmEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditor'), {
-      lineNumbers: true,
-      tabSize: 2,
-    });
-    // TODO asm linter
-    this.asmEditor.setSize('100%', '25em');
-    this.asmEditor.setOption('mode', 'lmsm-assembly');
+
     this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
       lineNumbers: true,
       tabSize: 2,
@@ -145,12 +143,13 @@ class LMSMUi {
     return this.assembled;
   }
 
-  run(step) {
-    step ||= 0;
+  runLoop(step) {
+    if (this.pauseNextTick) {
+      this.pauseNextTick = false
+      return;
+    }
     if (this.lmsm.status === 'Stopped') {
-      // TODO reset registers & upper memory?
-      this.setProgramCounter(0);
-      this.lmsm.status = "Ready";
+      return;
     }
 
     this.step()
@@ -163,8 +162,18 @@ class LMSMUi {
     }
 
     setTimeout(() => {
-      this.run(step + 1);
-    }, 750);
+      this.runLoop(step + 1);
+    }, this.speed);
+  }
+
+  pause() {
+    this.pauseNextTick = true;
+  }
+  run() {
+    // TODO reset registers & upper memory?
+    this.setProgramCounter(0);
+    this.lmsm.status = "Ready";
+    this.runLoop(1);
   }
 
   assembleAndRun() {

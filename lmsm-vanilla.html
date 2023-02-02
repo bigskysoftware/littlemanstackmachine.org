@@ -71,10 +71,11 @@
           </label>
         </section>
         <textarea id="codeEditorFirth"></textarea>
+      </span>
     </div>
     </span>
     <div id="codeEditorBox" class="box" data-cols="1" data-rows="4 5">
-      <strong class="allcaps block titlebar">Assembly</strong>
+      <strong class="allcaps block titlebar">LMSM Assembly</strong>
       <section class="tool-bar">
         <label>
           <input type="button" _="
@@ -83,31 +84,33 @@
           call syncToDOM()
           " value="Assemble" />
         </label>
-        <label>
-          <input type="button" _="
-          on click 
-          call $lmsm.run()
-          call syncToDOM()
-          " value="Run" />
-        </label>
-        <label>
-          <input type="button" _="
-          on click 
-          call $lmsm.assembleAndRun()
-          call syncToDOM()
-          " value="Load & Run" />
-        </label>
-        <label>
-          <input type="button" _="
-            on click 
-            call $lmsm.step()
-            call syncToDOM()" value="Step" />
-        </label>
       </section>
       <textarea id="codeEditor"></textarea>
     </div>
+
     <div id="registerFileBox" class="box" data-cols="2" data-rows="2">
       <strong class="allcaps block titlebar">Register File</strong>
+      <section class="tool-bar">
+        <label>
+          Speed:
+          <select _="on change set the $lmsm's speed to my value as Int">
+            <option value="1000">Slow</option>
+            <option value="500">Medium</option>
+            <option value="100">Fast</option>
+          </select>
+        </label>
+        <label>
+          <input type="button" _="on click call $lmsm.run()" value="Run" />
+        </label>
+        <label>
+          <input type="button" _="on click call $lmsm.pause()" value="Pause" />
+        </label>
+        <label>
+          <input type="button" _="
+            on click
+            call $lmsm.step()
+            call syncToDOM()" value="Step" />
+        </label>
       <div class="margin grid">
         <div class="box bad" data-cols="1">
           <label for="pc" class="bold">PC:
