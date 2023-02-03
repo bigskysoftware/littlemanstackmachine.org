@@ -7,7 +7,6 @@ class LMSMUi {
   firthSourceMap = null;
   assemblySourceMap = null;
   speed = 500;
-  pauseNextTick = false;
 
   static makeLMSM() {
     const lmsm = new LittleManStackMachine();
@@ -143,32 +142,40 @@ class LMSMUi {
     return this.assembled;
   }
 
-  runLoop(step) {
-    if (this.pauseNextTick) {
-      this.pauseNextTick = false
-      return;
-    }
+  runLoop() {
     if (this.lmsm.status === 'Stopped') {
+      this.currentTimeout = null;
       return;
     }
 
     this.step()
     syncToDOM();
-    if (step > 100) {
-      let cont = confirm("100 steps have been made, continue executing?");
-      if (!cont) {
-        return;
-      }
-    }
 
-    setTimeout(() => {
-      this.runLoop(step + 1);
+    this.currentTimeout = setTimeout(() => {
+      this.runLoop();
     }, this.speed);
   }
 
   pause() {
-    this.pauseNextTick = true;
+    if (this.currentTimeout) {
+      clearTimeout(this.currentTimeout);
+    }
   }
+
+  resume() {
+    this.runLoop();
+  }
+
+  setSpeed(delay) {
+    this.speed = delay;
+    if (this.currentTimeout) {
+      clearTimeout(this.currentTimeout);
+      this.currentTimeout = setTimeout(() => {
+        this.runLoop();
+      }, this.speed);
+    }
+  }
+
   run() {
     // TODO reset registers & upper memory?
     this.setProgramCounter(0);

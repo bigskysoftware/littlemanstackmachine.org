@@ -93,9 +93,9 @@
       <section class="tool-bar">
         <label>
           Speed:
-          <select _="on change set the $lmsm's speed to my value as Int">
+          <select _="on change call $lmsm.setSpeed(my value as Int)">
             <option value="1000">Slow</option>
-            <option value="500">Medium</option>
+            <option value="500" selected>Medium</option>
             <option value="100">Fast</option>
           </select>
         </label>
@@ -104,6 +104,9 @@
         </label>
         <label>
           <input type="button" _="on click call $lmsm.pause()" value="Pause" />
+        </label>
+        <label>
+          <input type="button" _="on click call $lmsm.resume()" value="Continue" />
         </label>
         <label>
           <input type="button" _="
