@@ -32,7 +32,8 @@
           <label>
             <input type="button" onclick="
             window.lmsm.compile();
-            window.lmsm.syncToDOM()" value="Compile" />
+            window.lmsm.syncToDOM();
+          " value="Compile" />
           </label>
         </section>
         <textarea id="codeEditorFirth"></textarea>
@@ -75,7 +76,8 @@
         <label>
           <input type="button" onclick="
             window.lmsm.step();
-            window.lmsm.syncToDOM()" value="Step" />
+            window.lmsm.syncToDOM();
+          " value="Step" />
         </label>
         <div class="margin grid">
           <div class="box bad" data-cols="1">
@@ -98,12 +100,18 @@
           </div>
           <div class="box ok" data-cols="4">
             <label for="sp" class="bold">SP:
-              <input id="sp" name="sp" class="register" size="3" type="text" onchange="window.lmsm.setStackPointer(this.value);" />
+              <input id="sp" name="sp" class="register" size="3" type="text" onchange="
+                window.lmsm.setStackPointer(this.value);
+                window.lmsm.syncToDOM();
+                " />
             </label>
           </div>
           <div class="box warn" data-cols="5">
             <label for="rap" class="bold">RAP:
-              <input id="rap" name="rap" class="register" size="3" type="text" onchange="window.lmsm.setReturnAddressPointer(this.value);" />
+              <input id="rap" name="rap" class="register" size="3" type="text" onchange="
+                window.lmsm.setReturnAddressPointer(this.value);
+                window.lmsm.syncToDOM();
+              " />
             </label>
           </div>
         </div>

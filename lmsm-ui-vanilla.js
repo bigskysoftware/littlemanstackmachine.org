@@ -8,6 +8,11 @@ class LMSMUi {
   assemblySourceMap = null;
   speed = 500;
 
+  static outputAppendHandler = (e) => {
+    e.target.innerHTML += `<div>${e.detail.entry}</div>`;
+  }
+
+
   static makeLMSM() {
     const lmsm = new LittleManStackMachine();
     lmsm.outputCallback = (value) => {
@@ -21,9 +26,9 @@ class LMSMUi {
       elem.dispatchEvent(event);
     }
     const outputPane = document.querySelector("#outputPane");
-    outputPane.addEventListener('output:append', (e) => {
-      e.target.innerHTML += e.detail.entry + '<br/>';
-    });
+
+    outputPane.removeEventListener('output:append', LMSMUi.outputAppendHandler);
+    outputPane.addEventListener('output:append', LMSMUi.outputAppendHandler);
     const callback = (mutationList, observer) => {
       mutationList.forEach((mutation) => {
         switch (mutation.type) {
