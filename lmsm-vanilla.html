@@ -13,48 +13,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/lint/lint.min.css" integrity="sha512-jP1+o6s94WQS9boYeDP3Azh8ihI5BxGgBZNjkABhx05MqH5WuDzfzSnoPxGxVzWi/gxxVHZHvWkdRM6SMy5B0Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/addon/lint/lint.js" defer></script>
-  <script src="https://unpkg.com/hyperscript.org@0.9.7"></script>
   <script src="lmsm.js"></script>
   <script src="lmsm-ui-vanilla.js" defer></script>
-  <script type="text/hyperscript">
-    def syncToDOM()
-      set value of the <#pc/> to $lmsm.getProgramCounter()
-      set value of the <#acc/> to $lmsm.getAccumulator()
-      set value of the <#ci/> to $lmsm.getCurrentInstruction()
-      set value of the <#sp/> to $lmsm.getStackPointer()
-      set value of the <#rap/> to $lmsm.getReturnAddressPointer()
-
-      set mem to <.memory tr input/>
-      set memArray to mem as Array
-
-      remove .program_counter from mem
-      add .program_counter to memArray[$lmsm.getProgramCounter()]
-
-      remove .stack_pointer from mem
-      if $lmsm.getStackPointer() is less than 200 then
-        add .stack_pointer to memArray[$lmsm.getStackPointer()]
-      end
-
-      remove .return_address_pointer from mem
-      if $lmsm.getReturnAddressPointer() is greater than 100 then
-        add .return_address_pointer to memArray[$lmsm.getReturnAddressPointer()]
-      end
-
-      set slots to <.memory tr input/>
-      repeat for slot in slots index i
-        set value of the slot to $lmsm.getMemory(i)
-      end
-    end
-  </script>
 </head>
 
-<body class="padding riobeachonsummer">
-  <div class="grid" _="
-    init
-    js return new LMSMUi() end
-    set $lmsm to the result
-    call syncToDOM()
-  ">
+<body class="padding riobeachonsummer" onload="
+  window.lmsm = new LMSMUi();
+  window.lmsm.syncToDOM();
+">
+  <div class="grid">
     <div id="titleBox" class="box center" data-cols="1 3" data-rows="1">
       <h2 class="allcaps">Little Man Stack Machine Emulator</h2>
     </div>
@@ -63,11 +30,9 @@
       <span>
         <section class="tool-bar">
           <label>
-            <input type="button" _="
-            on click 
-            call $lmsm.compile()
-            call syncToDOM()
-          " value="Compile" />
+            <input type="button" onclick="
+            window.lmsm.compile();
+            window.lmsm.syncToDOM()" value="Compile" />
           </label>
         </section>
         <textarea id="codeEditorFirth"></textarea>
@@ -78,10 +43,9 @@
       <strong class="allcaps block titlebar">LMSM Assembly</strong>
       <section class="tool-bar">
         <label>
-          <input type="button" _="
-          on click
-          call $lmsm.assemble()
-          call syncToDOM()
+          <input type="button" onclick="
+          window.lmsm.assemble();
+          window.lmsm.syncToDOM();
           " value="Assemble" />
         </label>
       </section>
@@ -93,82 +57,61 @@
       <section class="tool-bar">
         <label>
           Speed:
-          <select _="on change call $lmsm.setSpeed(my value as Int)">
+          <select onchange="window.lmsm.setSpeed(this.value)">
             <option value="1000">Slow</option>
             <option value="500" selected>Medium</option>
             <option value="100">Fast</option>
           </select>
         </label>
         <label>
-          <input type="button" _="on click call $lmsm.run()" value="Run" />
+          <input type="button" onclick="window.lmsm.run()" value="Run" />
         </label>
         <label>
-          <input type="button" _="on click call $lmsm.pause()" value="Pause" />
+          <input type="button" onclick="window.lmsm.pause()" value="Pause" />
         </label>
         <label>
-          <input type="button" _="on click call $lmsm.resume()" value="Continue" />
+          <input type="button" onclick="window.lmsm.resume()" value="Continue" />
         </label>
         <label>
-          <input type="button" _="
-            on click
-            call $lmsm.step()
-            call syncToDOM()" value="Step" />
+          <input type="button" onclick="
+            window.lmsm.step();
+            window.lmsm.syncToDOM()" value="Step" />
         </label>
-      <div class="margin grid">
-        <div class="box bad" data-cols="1">
-          <label for="pc" class="bold">PC:
-            <input id="pc" name="pc" class="register" type="text" size="3" _="
-              on load set my value to $lmsm.getProgramCounter()
-              on change
-                call $lmsm.setProgramCounter(my value)
-                call syncToDOM()
+        <div class="margin grid">
+          <div class="box bad" data-cols="1">
+            <label for="pc" class="bold">PC:
+              <input id="pc" name="pc" class="register" type="text" size="3" onchange="
+                window.lmsm.setProgramCounter(this.value);
+                window.lmsm.syncToDOM();
             " />
-          </label>
+            </label>
+          </div>
+          <div class="box info" data-cols="2">
+            <label for="acc" class="bold">ACC:
+              <input id="acc" name="acc" class="register" size="3" type="text" onchange="window.lmsm.setAccumulator(this.value);" />
+            </label>
+          </div>
+          <div class="box info" data-cols="3">
+            <label for="ci" class="bold">CI:
+              <input id="ci" name="ci" class="register" size="3" type="text" onchange="window.lmsm.setCurrentInstruction(this.value);" />
+            </label>
+          </div>
+          <div class="box ok" data-cols="4">
+            <label for="sp" class="bold">SP:
+              <input id="sp" name="sp" class="register" size="3" type="text" onchange="window.lmsm.setStackPointer(this.value);" />
+            </label>
+          </div>
+          <div class="box warn" data-cols="5">
+            <label for="rap" class="bold">RAP:
+              <input id="rap" name="rap" class="register" size="3" type="text" onchange="window.lmsm.setReturnAddressPointer(this.value);" />
+            </label>
+          </div>
         </div>
-        <div class="box info" data-cols="2">
-          <label for="acc" class="bold">ACC:
-            <input id="acc" name="acc" class="register" size="3" type="text" _="
-            on load set my value to $lmsm.getAccumulator()
-            on change call $lmsm.setAccumulator(my value)
-          " />
-          </label>
-        </div>
-        <div class="box info" data-cols="3">
-          <label for="ci" class="bold">CI:
-            <input id="ci" name="ci" class="register" size="3" type="text" _="
-            on load set my value to $lmsm.getCurrentInstruction()
-            on change call $lmsm.setCurrentInstruction(my value)
-          " />
-          </label>
-        </div>
-        <div class="box ok" data-cols="4">
-          <label for="sp" class="bold">SP:
-            <input id="sp" name="sp" class="register" size="3" type="text" _="
-            on load set my value to $lmsm.getStackPointer()
-            on change call $lmsm.setStackPointer(my value)
-          " />
-          </label>
-        </div>
-        <div class="box warn" data-cols="5">
-          <label for="rap" class="bold">RAP:
-            <input id="rap" name="rap" class="register" size="3" type="text" _="
-            on load set my value to $lmsm.getReturnAddressPointer()
-            on change call $lmsm.setReturnAddressPointer(my value)
-          " />
-          </label>
-        </div>
-      </div>
     </div>
     <div id="memoryBox" class="box" data-cols="2" data-rows="3 5">
       <strong class="allcaps block titlebar">Memory Layout</strong>
       <div class="center">
-        <table _="
-        on change
-        set mem to <.memory tr input/> as Array
-        repeat for inp in mem index i
-          call $lmsm.setMemory(i, the value of the inp)
-        end
-        ">
+        <table onchange="window.lmsm.updateMemory()">
           <caption></caption>
           <thead>
             <th></th>
@@ -1250,13 +1193,8 @@
     </div>
     <div id="outputBox" class="box" data-cols="3" data-rows="2 5">
       <strong class="allcaps block titlebar">Output</strong>
-      <input type="button" _="on click set #outputPane.innerHTML to ''" value="Clear" />
-      <div id="outputPane" class="box pane" _="
-        on output:append(timestamp, entry)
-          set my.innerHTML to my.innerHTML + entry + '<br/>'
-        on mutation of childList 
-          me.scroll({top: my scrollHeight, left: 0, behavior: 'smooth'})
-      ">
+      <input type="button" onclick="window.lmsm.clearOutput()" value="Clear" />
+      <div id="outputPane" class="box pane">
       </div>
     </div>
   </div>

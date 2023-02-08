@@ -20,6 +20,23 @@ class LMSMUi {
       });
       elem.dispatchEvent(event);
     }
+    const outputPane = document.querySelector("#outputPane");
+    outputPane.addEventListener('output:append', (e) => {
+      e.target.innerHTML += e.detail.entry + '<br/>';
+    });
+    const callback = (mutationList, observer) => {
+      mutationList.forEach((mutation) => {
+        switch (mutation.type) {
+          case 'childList':
+            mutation.target.scroll({ top: mutation.target.scrollHeight, left: 0, behavior: 'smooth' });
+            break;
+          default: break;
+        }
+      })
+    };
+    const observer = new MutationObserver(callback);
+    observer.observe(outputPane, { childList: true });
+
     return lmsm;
   }
   constructor() {
@@ -77,7 +94,7 @@ class LMSMUi {
       lineNumbers: true,
       tabSize: 2,
       lint: {
-        getAnnotations : (x) => {
+        getAnnotations: (x) => {
           let diagnostics = []
           if (this.firthEditor) {
             let compiler = new FirthCompiler();
@@ -98,11 +115,59 @@ class LMSMUi {
             }
           }
           return diagnostics
-        }},
+        }
+      },
     });
     this.firthEditor.setSize('100%', '25em');
     this.firthEditor.setOption('mode', 'firth');
   }
+
+  clearOutput() {
+    document.querySelector('#outputPane').innerHTML = '';
+  }
+
+  updateMemory() {
+    const mem = document.querySelectorAll(".memory tr input");
+    mem.forEach((m, i) => {
+      this.setMemory(i, m.value);
+    })
+  }
+
+  syncToDOM() {
+    document.querySelector("#pc").value = this.getProgramCounter();
+    document.querySelector("#acc").value = this.getAccumulator();
+    document.querySelector("#ci").value = this.getCurrentInstruction();
+    document.querySelector("#sp").value = this.getStackPointer();
+    document.querySelector("#rap").value = this.getReturnAddressPointer();
+
+    const slots = document.querySelectorAll(".memory tr input");
+    slots.forEach((s, i) => {
+      s.value = this.getMemory(i);
+    });
+
+    const pc = document.querySelectorAll(".program_counter");
+    pc.forEach((m, i) => {
+      m.classList.remove("program_counter");
+    });
+    slots.item(this.getProgramCounter()).classList.add("program_counter");
+
+    const sp = document.querySelectorAll(".stack_pointer");
+    sp.forEach((m, i) => {
+      m.classList.remove("stack_pointer");
+    });
+    if (this.getStackPointer() < 200) {
+      slots.item(this.getStackPointer()).classList.add("stack_pointer");
+    }
+
+    const rap = document.querySelectorAll(".return_address_pointer");
+    rap.forEach((m, i) => {
+      m.classList.remove("return_address_pointer");
+    });
+    if (this.getReturnAddressPointer() > 100) {
+      slots.item(this.getReturnAddressPointer()).classList.add("return_address_pointer");
+    }
+  }
+
   resetEditor() {
   }
 
@@ -149,7 +214,7 @@ class LMSMUi {
     }
 
     this.step()
-    syncToDOM();
+    this.syncToDOM();
 
     this.currentTimeout = setTimeout(() => {
       this.runLoop();
@@ -204,23 +269,23 @@ class LMSMUi {
 
     if (this.lastActiveAssemblyLine != null) {
       this.asmEditor.getDoc()
-          .removeLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
+        .removeLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
     }
     if (this.assemblySourceMap) {
       this.lastActiveAssemblyLine = this.assemblySourceMap[currentProgramCounter] - 1;
       this.asmEditor.getDoc()
-          .addLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
+        .addLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
     }
 
     if (this.lastActiveFirthLine != null) {
       this.firthEditor.getDoc()
-          .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+        .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
     }
 
     if (this.firthSourceMap && this.lastActiveAssemblyLine != null) {
       this.lastActiveFirthLine = this.firthSourceMap[this.lastActiveAssemblyLine + 1] - 1;
       this.firthEditor.getDoc()
-          .addLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+        .addLineClass(this.lastActiveFirthLine, 'background', 'markCode');
     }
   }
 
