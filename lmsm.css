@@ -4,7 +4,7 @@ input.memory_slot {
 }
 
 .box {
-  font-size: smaller;
+  font-size: small;
 }
 
 .pane {
@@ -41,12 +41,12 @@ td.memorySlot {
 }
 
 #outputPane {
-  height: 50em;
+  height: 35em;
   overflow-y: scroll;
 }
 
 #statusBox {
-  height: 6em;
+  height: 5em;
 }
 
 #currentInstructionBox {

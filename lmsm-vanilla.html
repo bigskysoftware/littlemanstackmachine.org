@@ -22,24 +22,21 @@
   window.lmsm.syncToDOM();
 ">
   <div class="grid">
-    <div id="titleBox" class="box center" data-cols="1 3" data-rows="1">
+    <div id="titleBox" class="box center" data-cols="1 5" data-rows="1">
       <h1 class="allcaps">🙋 Little Man Stack Machine Emulator</h2>
     </div>
     <div id="codeEditorBoxFirth" class="box" data-cols="1" data-rows="2">
       <strong class="allcaps block titlebar">Firth</strong>
-      <span>
-        <section class="tool-bar">
-          <label>
-            <input type="button" onclick="
+      <section class="tool-bar">
+        <label>
+          <input type="button" onclick="
             window.lmsm.compile();
             window.lmsm.syncToDOM();
           " value="Compile" />
-          </label>
-        </section>
-        <textarea id="codeEditorFirth"></textarea>
-      </span>
+        </label>
+      </section>
+      <textarea id="codeEditorFirth"></textarea>
     </div>
-    </span>
     <div id="codeEditorBox" class="box" data-cols="1" data-rows="3">
       <strong class="allcaps block titlebar">LMSM Assembly</strong>
       <section class="tool-bar">
@@ -52,7 +49,7 @@
       </section>
       <textarea id="codeEditor"></textarea>
     </div>
-    <div class="grid" data-cols="2" data-rows="2 3">
+    <div class="grid" data-cols="2 4" data-rows="2 3">
       <div id="toolbarBox" class="box" data-cols="1" data-rows="1">
         <div class="center">
           <section class="tool-bar">
@@ -78,7 +75,7 @@
       <div id="registerFileBox" class="box" data-cols="1" data-rows="2">
         <strong class="allcaps block titlebar">Register File</strong>
         <div class="margin grid">
-          <div class="box bad" data-cols="1">
+          <div class="box bad center" data-cols="1">
             <label for="pc" class="bold">PC:
               <input id="pc" name="pc" class="register" type="text" size="3" onchange="
                   window.lmsm.setProgramCounter(this.value);
@@ -86,17 +83,17 @@
               " />
             </label>
           </div>
-          <div class="box info" data-cols="2">
+          <div class="box info center" data-cols="2">
             <label for="acc" class="bold">ACC:
               <input id="acc" name="acc" class="register" size="3" type="text" onchange="window.lmsm.setAccumulator(this.value);" />
             </label>
           </div>
-          <div class="box info" data-cols="3">
+          <div class="box info center" data-cols="3">
             <label for="ci" class="bold">CI:
               <input id="ci" name="ci" class="register" size="3" type="text" onchange="window.lmsm.setCurrentInstruction(this.value);" />
             </label>
           </div>
-          <div class="box ok" data-cols="4">
+          <div class="box ok center" data-cols="4">
             <label for="sp" class="bold">SP:
               <input id="sp" name="sp" class="register" size="3" type="text" onchange="
                   window.lmsm.setStackPointer(this.value);
@@ -104,7 +101,7 @@
                   " />
             </label>
           </div>
-          <div class="box warn" data-cols="5">
+          <div class="box warn center" data-cols="5">
             <label for="rap" class="bold">RAP:
               <input id="rap" name="rap" class="register" size="3" type="text" onchange="
                   window.lmsm.setReturnAddressPointer(this.value);
@@ -1199,8 +1196,7 @@
         </div>
       </div>
     </div>
-    <div id="outputBox" class="box" data-cols="3" data-rows="2 4">
-      <!-- <strong class="allcaps block titlebar">Output</strong> -->
+    <div id="outputBox" class="box" data-cols="5" data-rows="2 3">
       <div id="statusBox" class="box">
         <strong class="allcaps block titlebar">Status</strong>
         <h3 class="allcaps"><output id="statusOutput"></output></h3>
