@@ -38,9 +38,9 @@ input.return_address_pointer {
 
 td.memorySlot {
   padding-inline-end: 0em;
-}  
+}
 
 #outputPane {
-  height: 52em;
+  height: 40em;
   overflow-y: scroll;
-}  
+}

@@ -8,12 +8,12 @@ class LMSMUi {
   assemblySourceMap = null;
   speed = 500;
 
-  static outputAppendHandler = (e) => {
+  outputAppendHandler = (e) => {
     e.target.innerHTML += `<div>${e.detail.entry}</div>`;
   }
 
 
-  static makeLMSM() {
+  makeLMSM() {
     const lmsm = new LittleManStackMachine();
     lmsm.outputCallback = (value) => {
       const elem = document.querySelector("#outputPane");
@@ -26,9 +26,9 @@ class LMSMUi {
       elem.dispatchEvent(event);
     }
     const outputPane = document.querySelector("#outputPane");
+    outputPane.removeEventListener('output:append', this.outputAppendHandler);
+    outputPane.addEventListener('output:append', this.outputAppendHandler);
 
-    outputPane.removeEventListener('output:append', LMSMUi.outputAppendHandler);
-    outputPane.addEventListener('output:append', LMSMUi.outputAppendHandler);
     const callback = (mutationList, observer) => {
       mutationList.forEach((mutation) => {
         switch (mutation.type) {
@@ -45,7 +45,7 @@ class LMSMUi {
     return lmsm;
   }
   constructor() {
-    this.lmsm = LMSMUi.makeLMSM();
+    this.lmsm = this.makeLMSM();
 
     CodeMirror.defineSimpleMode('lmsm-assembly', {
       start: [
@@ -145,6 +145,9 @@ class LMSMUi {
     document.querySelector("#sp").value = this.getStackPointer();
     document.querySelector("#rap").value = this.getReturnAddressPointer();
 
+    document.querySelector("#statusOutput").value = this.getStatus();
+    document.querySelector("#currentInstructionOutput").value = this.getCurrentInstructionDescription();
+
     const slots = document.querySelectorAll(".memory tr input");
     slots.forEach((s, i) => {
       s.value = this.getMemory(i);
@@ -173,11 +176,19 @@ class LMSMUi {
     }
   }
 
+  getCurrentInstructionDescription() {
+    return "TODO";
+  }
+
+  getStatus() {
+    return this.lmsm.status;
+  }
+
   resetEditor() {
   }
 
   compile() {
-    this.lmsm = LMSMUi.makeLMSM();
+    this.lmsm = this.makeLMSM();
     this.resetEditor();
     const code = this.firthEditor.getValue();
 
@@ -204,7 +215,7 @@ class LMSMUi {
   }
 
   assemble() {
-    this.lmsm = LMSMUi.makeLMSM();
+    this.lmsm = this.makeLMSM();
     this.resetEditor();
     const code = this.asmEditor.getValue();
     this.assembled = this.lmsm.assemble(code);
@@ -254,7 +265,7 @@ class LMSMUi {
   }
 
   assembleAndRun() {
-    this.lmsm = LMSMUi.makeLMSM();
+    this.lmsm = this.makeLMSM();
     this.resetEditor();
     const code = this.asmEditor.getValue();
     this.lmsm.assembleAndRun(code);
