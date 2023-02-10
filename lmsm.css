@@ -1,5 +1,5 @@
 input.memory_slot {
-  font-size: x-small;
+  line-height: 0em;
   background-color: whitesmoke;
 }
 
@@ -17,11 +17,15 @@ input.memory_slot {
 }
 
 .riobeachonsummer {
-  --density: 0.125;
+  --density: 0.1;
 }
 
-input.register {
-  line-height: 0em;
+#registerBox .register {
+  font-size: small;
+}
+
+#registerBox {
+  font-size: small;
 }
 
 input.program_counter {
@@ -37,18 +41,23 @@ input.return_address_pointer {
 }
 
 td.memorySlot {
-  padding-inline-end: 0em;
+  padding-inline-end: 0rem;
+}
+
+td.memorySlot input {
+  font-size: smaller;
+  font-weight: bold;
 }
 
 #outputPane {
-  height: 35em;
+  height: 40em;
   overflow-y: scroll;
-}
-
-#statusBox {
-  height: 5em;
 }
 
 #currentInstructionBox {
   height: 10em;
+}
+
+#debuggerBox .pane {
+  height: 40em;
 }

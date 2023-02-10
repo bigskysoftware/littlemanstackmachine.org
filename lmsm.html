@@ -145,7 +145,7 @@
       </section>
       <div id="codeEditor"></div>
     </div>
-    <div id="registerFileBox" class="box" data-cols="2" data-rows="2">
+    <div id="registerBox" class="box" data-cols="2" data-rows="2">
       <strong class="allcaps block titlebar">Register File</strong>
       <div class="margin grid">
         <div class="box bad" data-cols="1">
@@ -205,7 +205,7 @@
                           else return 'memory_slot';
                         }
                       }" />
-                      </label>
+                    </label>
                   </td>
                 </template>
               </tr>
@@ -217,8 +217,7 @@
     <div id="outputBox" class="box" data-cols="3" data-rows="2 5">
       <strong class="allcaps block titlebar">Output</strong>
       <input type="button" @click="lmsm.clearOutput()" value="Clear" />
-      <div id="outputPane" class="box pane" 
-        _="on mutation of childList me.scroll({top: my scrollHeight, left: 0, behavior: 'smooth'})">
+      <div id="outputPane" class="box pane" _="on mutation of childList me.scroll({top: my scrollHeight, left: 0, behavior: 'smooth'})">
         <template x-for="line in lmsm.output">
           <div x-text="line"></div>
         </template>
