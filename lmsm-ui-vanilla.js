@@ -1,11 +1,13 @@
 class LMSMUi {
 
   lmsm = null;
+
   asmEditor = null;
-  firthEditor = null;
-  assembled = null;
-  firthSourceMap = null;
   assemblySourceMap = null;
+
+  firthEditor = null;
+  firthSourceMap = null;
+
   speed = 500;
 
   outputAppendHandler = (e) => {
@@ -270,8 +272,6 @@ class LMSMUi {
     let assembler = new LMSMAssembler();
     let assemblyResult = assembler.assemble(compileResult.assembly);
 
-    this.assembled = this.lmsm.assemble(compileResult.assembly);
-
     this.assemblySourceMap = assemblyResult.sourceMap;
     this.lmsm.load(assemblyResult.machineCode);
   }
@@ -280,9 +280,10 @@ class LMSMUi {
     this.lmsm = this.makeLMSM();
     this.resetEditor();
     const code = this.asmEditor.getValue();
-    this.assembled = this.lmsm.assemble(code);
-    this.lmsm.load(this.assembled);
-    return this.assembled;
+    let assembler = new LMSMAssembler();
+    let assemblyResult = assembler.assemble(code);
+    this.assemblySourceMap = assemblyResult.sourceMap;
+    this.lmsm.load(assemblyResult.machineCode);
   }
 
   runLoop() {
@@ -361,34 +362,27 @@ class LMSMUi {
       if (mappedAssemblyLine != null) {
         // editor is zero-based
         this.lastActiveAssemblyLine = mappedAssemblyLine - 1;
-      } else {
-        this.lastActiveAssemblyLine = null;
-      }
-
-      if (this.lastActiveAssemblyLine) {
         this.asmEditor.getDoc()
             .addLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
+      } else {
+        this.lastActiveAssemblyLine = null;
       }
     }
 
     if (this.lastActiveFirthLine != null) {
-      if (this.lastActiveFirthLine) {
-        this.firthEditor.getDoc()
-            .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
-      }
+      this.firthEditor.getDoc()
+          .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
     }
 
-    if (this.firthSourceMap && this.lastActiveAssemblyLine != null) {
-      let mappedValue = this.firthSourceMap[this.lastActiveAssemblyLine + 1] - 1;
+    if (this.firthSourceMap != null && this.lastActiveAssemblyLine != null) {
+      let mappedValue = this.firthSourceMap[this.lastActiveAssemblyLine + 1];
       if (mappedValue != null) {
         // editor is zero-based
         this.lastActiveFirthLine = mappedValue - 1;
-      } else {
-        this.lastActiveFirthLine = null;
-      }
-      if (this.lastActiveFirthLine) {
         this.firthEditor.getDoc()
             .addLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+      } else {
+        this.lastActiveFirthLine = null;
       }
     }
   }
