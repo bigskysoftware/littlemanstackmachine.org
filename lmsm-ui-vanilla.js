@@ -146,7 +146,7 @@ class LMSMUi {
     document.querySelector("#rap").value = this.getReturnAddressPointer();
 
     document.querySelector("#statusOutput").value = this.getStatus();
-    document.querySelector("#currentInstructionOutput").value = this.getCurrentInstructionDescription();
+    document.querySelector("#nextInstructionOutput").innerHTML = this.getNextInstructionDescription();
 
     const slots = document.querySelectorAll(".memory tr input");
     slots.forEach((s, i) => {
@@ -176,8 +176,70 @@ class LMSMUi {
     }
   }
 
-  getCurrentInstructionDescription() {
-    return "TODO";
+  getNextInstruction() {
+    return this.getMemory(this.getProgramCounter());
+  }
+
+  getNextInstructionDescription() {
+    let nextInstruction = this.getNextInstruction()
+    let detail = "";
+    if (nextInstruction == null) {
+      detail = "No Instruction Found";
+    } else if (nextInstruction === 0) {
+      detail = "HLT - The Halt Instruction.  This instruction will halt the machine.";
+    } else if (100 <= nextInstruction && nextInstruction < 200) {
+      detail = "ADD - The Add Instruction.  This instruction will add the value found in memory slot " + (nextInstruction - 100) + " to the value found in the accumulator register.";
+    } else if (200 <= nextInstruction && nextInstruction < 200) {
+      detail = "SUB - The Subtraction Instruction.  This instruction will subtract the value found in memory slot " + (nextInstruction - 100) + " to the value found in the accumulator register.";
+    } else if (300 <= nextInstruction && nextInstruction < 400) {
+      detail = "STA - The Store Instruction.  This instruction will store the accumulator to the memory slot " + (nextInstruction - 100);
+    } else if (400 <= nextInstruction && nextInstruction < 500) {
+      detail = "LDI - The Load Immediate Instruction.  This instruction will put the value " + (nextInstruction - 400) + " into the accumulator";
+    } else if (500 <= nextInstruction && nextInstruction < 600) {
+      detail = "LDA - The Load Instruction.  This instruction will load the value in the memory slot " + (nextInstruction - 100) + " into the accumulator";
+    } else if (600 <= nextInstruction && nextInstruction < 700) {
+      detail = "BRA - The Branch Unconditionally Instruction.  This instruction will update the program counter to the value " + (nextInstruction - 100);
+    } else if (700 <= nextInstruction && nextInstruction < 800) {
+      detail = "BRZ - The Branch If Zero Instruction.  This instruction will update the program counter to the value " + (nextInstruction - 100) + " if the current value of the accumulator is zero";
+    } else if (800 <= nextInstruction && nextInstruction < 900) {
+      detail = "BRP - The Branch If Positive Instruction.  This instruction will update the program counter to the value " + (nextInstruction - 100) + " if the current value of the accumulator is positive or zero";
+    } else if (901 === nextInstruction) {
+      detail = "INP - The Input Instruction.  This instruction will ask the user for a numeric value and place it in the accumulator";
+    } else if (902 === nextInstruction) {
+      detail = "OUT - The Output Instruction.  This instruction will print the current value of the accumulator to the output";
+    } else if (910 === nextInstruction) {
+      detail = "JAL - The Jump & Link Instruction.  This instruction will consume the top of the value stack and update the program counter to it.  It will also push the address of the next instruction onto the return address stack.";
+    } else if (911 === nextInstruction) {
+      detail = "RET - The Return Instruction.  This instruction will consume the top of the return address stack and update the program counter to it.";
+    } else if (920 === nextInstruction) {
+      detail = "SPUSH - The Push Instruction.  This instruction will push the value of the accumulator onto the value stack";
+    } else if (921 === nextInstruction) {
+      detail = "SPOP - The Pop Instruction.  This instruction will pop the opt value of the value stack off and place it in the accumulator";
+    } else if (922 === nextInstruction) {
+      detail = "SDUP - The Duplicate Instruction.  This instruction will duplicate the value on the top of the value stack";
+    } else if (923 === nextInstruction) {
+      detail = "SDROP - The Drop Instruction.  This instruction will drop/remove the value on the top of the value stack";
+    } else if (924 === nextInstruction) {
+      detail = "SSWAP - The Swap Instruction.  This instruction will swap the two values on the top of the value stack";
+    } else if (930 === nextInstruction) {
+      detail = "SADD - The Stack Add Instruction.  This instruction will add the top two values on the top of the value stack and replace them with the result";
+    } else if (931 === nextInstruction) {
+      detail = "SSUB - The Stack Subtract Instruction.  This instruction will subtract the top two values on the top of the value stack and replace them with the result";
+    } else if (932 === nextInstruction) {
+      detail = "SMUL - The Stack Multiply Instruction.  This instruction will multiply the top two values on the top of the value stack and replace them with the result";
+    } else if (933 === nextInstruction) {
+      detail = "SDIV - The Stack Divide Instruction.  This instruction will divide the top two values on the top of the value stack and replace them with the result";
+    } else if (934 === nextInstruction) {
+      detail = "SMAX - The Stack Max Instruction.  This instruction will remove the top two values on the top of the value stack and replace them with the maximum of those values";
+    } else if (935 === nextInstruction) {
+      detail = "SMIN - The Stack Min Instruction.  This instruction will remove the top two values on the top of the value stack and replace them with the minimum of those values";
+    } else {
+      detail = "Unknown instruction - The behavior of this machine instruction is undefined.";
+    }
+
+    let desc = `<h3>Instruction: ${nextInstruction || ''}</h3>
+                <p>${detail}</p>`;
+    return desc;
   }
 
   getStatus() {
@@ -271,12 +333,18 @@ class LMSMUi {
     this.lmsm.assembleAndRun(code);
   }
 
+  reset() {
+    this.resetEditor();
+    this.setProgramCounter(0);
+    this.setStackPointer(200);
+    this.setReturnAddressPointer(99);
+    this.lmsm.status = "Ready";
+  }
+
   step() {
 
     if (this.lmsm.status === "Stopped") {
-      this.resetEditor();
-      this.setProgramCounter(0);
-      this.lmsm.status = "Ready";
+      return;
     }
 
     this.lmsm.step();
@@ -288,20 +356,40 @@ class LMSMUi {
         .removeLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
     }
     if (this.assemblySourceMap) {
-      this.lastActiveAssemblyLine = this.assemblySourceMap[currentProgramCounter] - 1;
-      this.asmEditor.getDoc()
-        .addLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
+
+      let mappedAssemblyLine = this.assemblySourceMap[currentProgramCounter];
+      if (mappedAssemblyLine != null) {
+        // editor is zero-based
+        this.lastActiveAssemblyLine = mappedAssemblyLine - 1;
+      } else {
+        this.lastActiveAssemblyLine = null;
+      }
+
+      if (this.lastActiveAssemblyLine) {
+        this.asmEditor.getDoc()
+            .addLineClass(this.lastActiveAssemblyLine, 'background', 'markCode');
+      }
     }
 
     if (this.lastActiveFirthLine != null) {
-      this.firthEditor.getDoc()
-        .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+      if (this.lastActiveFirthLine) {
+        this.firthEditor.getDoc()
+            .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+      }
     }
 
     if (this.firthSourceMap && this.lastActiveAssemblyLine != null) {
-      this.lastActiveFirthLine = this.firthSourceMap[this.lastActiveAssemblyLine + 1] - 1;
-      this.firthEditor.getDoc()
-        .addLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+      let mappedValue = this.firthSourceMap[this.lastActiveAssemblyLine + 1] - 1;
+      if (mappedValue != null) {
+        // editor is zero-based
+        this.lastActiveFirthLine = mappedValue - 1;
+      } else {
+        this.lastActiveFirthLine = null;
+      }
+      if (this.lastActiveFirthLine) {
+        this.firthEditor.getDoc()
+            .addLineClass(this.lastActiveFirthLine, 'background', 'markCode');
+      }
     }
   }
 
