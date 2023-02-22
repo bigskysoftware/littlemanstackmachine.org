@@ -248,12 +248,8 @@ class LMSMUi {
     return this.lmsm.status;
   }
 
-  resetEditor() {
-  }
-
   compile() {
     this.lmsm = this.makeLMSM();
-    this.resetEditor();
     const code = this.firthEditor.getValue();
 
     let compiler = new FirthCompiler();
@@ -278,7 +274,6 @@ class LMSMUi {
 
   assemble() {
     this.lmsm = this.makeLMSM();
-    this.resetEditor();
     const code = this.asmEditor.getValue();
     let assembler = new LMSMAssembler();
     let assemblyResult = assembler.assemble(code);
@@ -329,13 +324,11 @@ class LMSMUi {
 
   assembleAndRun() {
     this.lmsm = this.makeLMSM();
-    this.resetEditor();
     const code = this.asmEditor.getValue();
     this.lmsm.assembleAndRun(code);
   }
 
   reset() {
-    this.resetEditor();
     this.setProgramCounter(0);
     this.setStackPointer(200);
     this.setReturnAddressPointer(99);
