@@ -11,7 +11,7 @@ class LittleManStackMachine {
 
     // The output buffer of the machine
     output = []
-    
+
     // This is the register file for the machine, with a total of five registers
     registers = {
         program_counter:0,         // this register points to the next instruction in memory to execute
@@ -141,17 +141,20 @@ class LittleManStackMachine {
             let value = this.inputCallback();
             this.registers.accumulator = value;
         } else if (instruction === 902) {
-            console.log(this.registers.accumulator + " ");
             this.output.push(this.registers.accumulator);
             this.outputCallback(this.registers.accumulator);
         } else if (instruction === 910) {
-            this.registers.return_address_pointer++;
+            // layout: var0, var1, ... varN, N, return address | N = frameSize
+            let frame_size = this.memory[this.registers.stack_pointer + 1];
+            this.registers.return_address_pointer += frame_size + 2;
+            this.memory[this.registers.return_address_pointer - 1] = frame_size;
             this.memory[this.registers.return_address_pointer] = this.registers.program_counter;
             this.registers.program_counter = this.memory[this.registers.stack_pointer];
-            this.registers.stack_pointer++;
+            this.registers.stack_pointer += 2;
         } else if (instruction === 911) {
             this.registers.program_counter = this.memory[this.registers.return_address_pointer];
-            this.registers.return_address_pointer--;
+            let frame_size = this.memory[this.registers.return_address_pointer - 1];
+            this.registers.return_address_pointer -= frame_size + 2;
         } else if (instruction === 920) {
             this.registers.stack_pointer--;
             this.memory[this.registers.stack_pointer] = this.registers.accumulator;
@@ -197,6 +200,37 @@ class LittleManStackMachine {
             let second = this.memory[this.registers.stack_pointer];
             this.memory[this.registers.stack_pointer + 1] = first < second ? first : second;
             this.registers.stack_pointer++;
+        } else if (instruction === 936) {
+            let first = this.memory[this.registers.stack_pointer + 1];
+            let second = this.memory[this.registers.stack_pointer];
+            this.memory[this.registers.stack_pointer + 1] = first % second;
+            this.registers.stack_pointer++;
+        } else if (instruction === 937) {
+            let first = this.memory[this.registers.stack_pointer + 1];
+            let second = this.memory[this.registers.stack_pointer];
+            this.memory[this.registers.stack_pointer + 1] = first === second ? 1 : 0;
+            this.registers.stack_pointer++;
+        } else if (instruction === 938) {
+            let first = this.memory[this.registers.stack_pointer + 1];
+            let second = this.memory[this.registers.stack_pointer];
+            this.memory[this.registers.stack_pointer + 1] = first < second ? 1 : 0;
+            this.registers.stack_pointer++;
+        } else if (instruction === 939) {
+            let first = this.memory[this.registers.stack_pointer + 1];
+            let second = this.memory[this.registers.stack_pointer];
+            this.memory[this.registers.stack_pointer + 1] = first > second ? 1 : 0;
+            this.registers.stack_pointer++;
+        } else if (instruction === 940) {
+            let first = this.memory[this.registers.stack_pointer];
+            this.memory[this.registers.stack_pointer] = first === 0 ? 1 : 0;
+        } else if (instruction === 941) {
+            let first = this.memory[this.registers.stack_pointer];
+            let slot = this.registers.accumulator;
+            this.registers.stack_pointer++;
+            this.memory[this.registers.return_address_pointer - 2 - slot] = first;
+        } else if (instruction === 942) {
+            let slot = this.registers.accumulator;
+            this.registers.accumulator = this.memory[this.registers.return_address_pointer - 2 - slot];
         } else {
             this.status = "Stopped";
         }
@@ -242,7 +276,7 @@ class LMSMTokenizer {
             if (this.atSpace()) {
                 this.offset++;
                 this.lineOffset++;
-            }else if (this.atNewLine()) {
+            } else if (this.atNewLine()) {
                 this.offset++;
                 this.line++;
                 this.lineOffset = 0;
@@ -348,7 +382,14 @@ class LMSMAssembler {
         "SMUL": 932,
         "SDIV": 933,
         "SMAX": 934,
-        "SMIN": 935
+        "SMIN": 935,
+        "SREM": 936,
+        "SEQ": 937,
+        "SGT": 939,
+        "SLT": 938,
+        "SNOT": 940,
+        "FST": 941,
+        "FLD": 942,
     }
 
     ARG_INSTRUCTIONS = ["ADD", "SUB", "LDA", "STA", "BRA", "BRZ", "BRP", "DAT", "LDI", "CALL", "SPUSHI"]
@@ -878,6 +919,7 @@ class FirthCompiler {
                 code.add(asm, element.token);
             }
         } else if (element.type === "FunctionCall") {
+            code.add("SPUSHI 0", element.token); // firth functions always have 0 arguments
             code.add("CALL " + element.functionName, element.token);
         } else if (element.type === "FunctionDefinition") {
             code.labelNextInstruction(element.name);
@@ -1010,5 +1052,896 @@ class FirthCodeGenerator {
         let s = this.code.join("\n");
         console.log(s)
         return s
+    }
+}
+
+
+class SeaCompiler {
+    static TYPES = ["int", "void"];
+    static KEYWORDS = ["return", "extern", "if", "while", "else", "for"];
+    static TOKEN_TYPE = {
+        IDENT: "Identifier",
+        KEYWORD: "Keyword",
+        TYPE: "Type",
+        PUNCT: "Punctuation",
+        INT: "Integer",
+        OP: "Operator",
+        ERROR: "Error",
+    };
+    tokenize(input) {
+        const operators = ['+', '-', '*', '/', '<=', '>=', '==', '!=', '<', '>', '='];
+        const punctuations = ['(', ')', '{', '}', ';', ','];
+        const isAlpha = char => /[a-zA-Z]/.test(char);
+        const isAlphaNumeric = char => char !== undefined && /[a-zA-Z0-9_]/.test(char);
+        const isNumeric = char => /[0-9]/.test(char);
+
+        const tokens = [];
+        let line = 1;
+        let lineOffset = 0;
+        let index = 0;
+
+        function addToken(type, value) {
+            tokens.push({
+                type,
+                value,
+                line,
+                lineOffset,
+                index,
+            });
+            index += value.length;
+            lineOffset += value.length;
+        }
+
+        while (index < input.length) {
+            const char = input[index];
+
+            if (char === ' ' || char === '\t' || char === '\r') {
+                index++;
+                lineOffset++;
+            } else if (char === '\n') {
+                index++;
+                line++;
+                lineOffset = 0;
+            } else if (operators.some(op => input.startsWith(op, index))) {
+                let op = operators.find(op => input.startsWith(op, index));
+                addToken(SeaCompiler.TOKEN_TYPE.OP, op);
+            } else if (punctuations.includes(char)) {
+                addToken(SeaCompiler.TOKEN_TYPE.PUNCT, char);
+            } else if (isAlpha(char)) {
+                let identifier = char;
+                for (let offset = 1; isAlphaNumeric(input[index + offset]); offset++) {
+                    identifier += input[index + offset];
+                }
+
+                if (SeaCompiler.KEYWORDS.includes(identifier)) {
+                    addToken(SeaCompiler.TOKEN_TYPE.KEYWORD, identifier);
+                } else if (SeaCompiler.TYPES.includes(identifier)) {
+                    addToken(SeaCompiler.TOKEN_TYPE.TYPE, identifier);
+                } else {
+                    addToken(SeaCompiler.TOKEN_TYPE.IDENT, identifier);
+                }
+            } else if (isNumeric(char)) {
+                let number = char;
+                for (let offset = 1; isNumeric(input[index + offset]); offset++) {
+                    number += input[index + offset];
+                }
+                addToken(SeaCompiler.TOKEN_TYPE.INT, number);
+            } else {
+                addToken(SeaCompiler.TOKEN_TYPE.ERROR, char);
+            }
+        }
+
+        return tokens;
+    }
+
+    static ELEMENT_TYPE = {
+        DEF_EXTERN: "extern_def",
+        DEF_FUNCTION: "function_def",
+        BLOCK: "block",
+
+        STMT_VAR: "variable_stmt",
+        STMT_RETURN: "return_stmt",
+        STMT_IF: "if_stmt",
+        STMT_FOR: "for_stmt",
+        STMT_WHILE: "while_stmt",
+        STMT_EXPR: "expr_stmt",
+
+        EXPR_INT: "expr_int",
+        EXPR_IDENT: "expr_ident",
+        EXPR_GLOBAL_IDENT: "expr_global_ident",
+        EXPR_INVOKE: "expr_invoke",
+        EXPR_BINOP: "expr_binop",
+        EXPR_ASSIGN: "expr_assign",
+        EXPR_ASSIGN_GLOBAL: "expr_assign_global",
+    }
+    parse(tokens) {
+        let index = 0;
+        let currentToken = tokens[index];
+
+        let ast = {
+            functions: {},
+            externs: {},
+            globals: {},
+            errors: [],
+            scope: {
+                maxLocals: 0,
+                numLocals: 0,
+                slotBindings: {},
+                frames: [],
+                push: function push() {
+                    this.frames.push({});
+                },
+                pop: function pop() {
+                    let frame = this.frames.pop();
+                    this.maxLocals = Math.max(this.maxLocals, this.numLocals);
+                    this.numLocals -= Object.keys(frame).length;
+                },
+                isDefined: function isDefined(name) {
+                    return name && this.frames.some(frame => frame[name]);
+                },
+                define: function define(name, type) {
+                    if (name.value) {
+                        if (this.frames.length) {
+                            this.frames[this.frames.length - 1][name.value] = type;
+                            let slot = this.numLocals++;
+                            this.slotBindings[name.value] = slot;
+                            return slot;
+                        } else {
+                            ast.globals[name.value] = type;
+                        }
+                    } else {
+                        return error("Cannot define variable with no name!", name);
+                    }
+                },
+                reset: function reset() {
+                    this.maxLocals = 0;
+                    this.slotBindings = {};
+                    this.numLocals = 0;
+                    this.frames = [];
+                },
+                getSlot: function getSlot(name) {
+                    return this.slotBindings[name];
+                },
+            },
+            isDefined: function isDefined(name) {
+                return name && (this.scope.isDefined(name)
+                    || this.functions[name] || this.externs[name] || this.globals[name]);
+            },
+            hasVar: function hasVar(name) {
+                return name && (this.globals[name] || this.scope.isDefined(name));
+            },
+            getFunc: function getFunc(name) {
+                return this.functions[name] || this.externs[name];
+            }
+        }
+
+        function consume() {
+            if (currentToken) {
+                let token = currentToken;
+                currentToken = tokens[++index];
+                return token;
+            }
+        }
+
+        function expect(value) {
+            if (currentToken && currentToken.value === value) {
+                return consume();
+            } else {
+                return error(`Expected '${value}'`);
+            }
+        }
+
+        function more() {
+            return index < tokens.length;
+        }
+
+        function peek(value, n) {
+            if (n) {
+                return tokens[index + n] && tokens[index + n].value === value;
+            } else {
+                return currentToken && currentToken.value === value;
+            }
+        }
+
+        function take(value) {
+            if (peek(value)) {
+                consume();
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        function peekType(value, n) {
+            if (n) {
+                return tokens[index + n] && tokens[index + n].type === value;
+            } else {
+                return currentToken && currentToken.type === value;
+            }
+        }
+
+        function error(message, token) {
+            if (!token) {
+                if (currentToken) token = consume();
+                else token = tokens[tokens.length - 1] || { line: 0, col: 0 };
+            }
+            let error = { token, message };
+            ast.errors.push(error);
+            return error;
+        }
+
+        function parseProgram() {
+            while (currentToken) {
+                if (peek('extern')) {
+                    let extern = parseExtern();
+
+                    const VALID_EXTERNS = {
+                        "get": {returns: "int", parameters: []},
+                        "put": {returns: "void", parameters: ["int"]},
+                    };
+
+                    if (ast.isDefined(extern.functionName.value)) {
+                        error(`symbol '${extern.functionName.value}' already defined`, extern.functionName);
+                    } else if (!VALID_EXTERNS[extern.functionName.value]) {
+                        error(`invalid extern function '${extern.functionName.value}'`, extern.functionName);
+                    } else {
+                        let def = VALID_EXTERNS[extern.functionName.value];
+                        if (def.returns !== extern.returnType.value) {
+                            error(`extern function '${extern.functionName.value}' returns '${extern.returnType}' but should return '${def.returns}'`, extern.returnType);
+                        } else if (def.parameters.length !== extern.parameters.length) {
+                            error(`extern function '${extern.functionName.value}' expects these parameters: ${def.parameters.join(", ")}`, extern.functionName);
+                        } else if (def.parameters.some((param, idx) => param !== extern.parameters[idx].type.value)) {
+                            error(`extern function '${extern.functionName.value}' expects these parameters: ${def.parameters.join(", ")}`, extern.functionName);
+                        } else {
+                            ast.externs[extern.functionName.value] = extern;
+                        }
+                    }
+                } else if (peek('(', 2)) { // {index + 0:ret} {index + 1:name} {index + 2:'('}
+                    let func = parseFunction();
+                    if (ast.isDefined(func.functionName.value)) {
+                        return error(`symbol '${func.functionName.value}' already defined`, func.functionName);
+                    } else {
+                        ast.functions[func.functionName.value] = func;
+                    }
+                } else {
+                    let item = parseVarStmt();
+                    for (const { name, value } of item.items) {
+                        ast.globals[name.value] = value;
+                    }
+                }
+            }
+        }
+
+        function parseExtern() {
+            expect('extern');
+            const returnType = parseType();
+            const functionName = parseIdent();
+
+            expect('(');
+            const parameters = [];
+            while (more() && !peek(')')) {
+                let type = parseType();
+                parameters.push({ type });
+
+                if (!take(',')) {
+                    break;
+                }
+            }
+            expect(')');
+            expect(';');
+
+            return {
+                type: SeaCompiler.ELEMENT_TYPE.DEF_EXTERN,
+                returnType,
+                functionName,
+                parameters,
+            };
+        }
+
+        function parseFunction() {
+            ast.scope.reset();
+            const returnType = parseType();
+            const functionName = parseIdent();
+            expect('(');
+            const parameters = [];
+
+            ast.scope.push();
+            while (more() && !peek(')')) {
+                let type = parseType();
+                let name = parseIdent();
+
+                if (ast.isDefined(name.value)) {
+                    error(`Parameter '${name}' already defined`, name);
+                }
+
+                let slot = ast.scope.define(name, type.value);
+
+                parameters.push({ name, type, slot });
+
+                if (!take(',')) {
+                    break;
+                }
+            }
+            expect(')');
+
+            let body = parseBlock();
+            ast.scope.pop();
+
+            return {
+                type: SeaCompiler.ELEMENT_TYPE.DEF_FUNCTION,
+                maxLocals: ast.scope.maxLocals,
+                slotBindings: ast.scope.slotBindings,
+                functionName,
+                returnType,
+                parameters,
+                body,
+            };
+        }
+
+        function parseLiteralExpr() {
+            if (peekType(SeaCompiler.TOKEN_TYPE.INT)) {
+                let token = consume();
+                const value = parseInt(token.value);
+                return { type: SeaCompiler.ELEMENT_TYPE.EXPR_INT, value, token };
+            } else if (peekType(SeaCompiler.TOKEN_TYPE.IDENT)) {
+                let token = consume();
+                if (!ast.hasVar(token.value)) {
+                    return error(`Undefined symbol '${token.value}'`, token);
+                }
+
+                if (ast.globals[token.value]) {
+                    return { type: SeaCompiler.ELEMENT_TYPE.EXPR_GLOBAL_IDENT, value: token.value, token };
+                } else {
+                    let slot = ast.scope.getSlot(token.value);
+                    return { type: SeaCompiler.ELEMENT_TYPE.EXPR_IDENT, value: token.value, token, slot };
+                }
+            } else {
+                let token = consume();
+                return error(`Expected literal but found '${token.value}'`, token);
+            }
+        }
+
+        function parseInvokeExpr() {
+            if (peekType(SeaCompiler.TOKEN_TYPE.IDENT) && peek('(', 1)) {
+                let functionName = consume();
+                expect('(');
+                let args = [];
+                while (more() && !peek(')')) {
+                    args.push(parseExpr());
+                    if (!take(',')) {
+                        break;
+                    }
+                }
+                expect(')');
+                return {
+                    type: SeaCompiler.ELEMENT_TYPE.EXPR_INVOKE,
+                    functionName,
+                    args,
+                };
+            } else {
+                return parseLiteralExpr();
+            }
+        }
+
+        function parseProductExpr() {
+            let left = parseInvokeExpr();
+            while (peek('*') || peek('/')) {
+                const operator = consume().value;
+                const right = parseInvokeExpr();
+                left = { type: SeaCompiler.ELEMENT_TYPE.EXPR_BINOP, operator: operator, left: left, right: right };
+            }
+            return left;
+        }
+
+        function parseTermExpr() {
+            let left = parseProductExpr();
+            while (peek('+') || peek('-')) {
+                const operator = consume().value;
+                const right = parseProductExpr();
+                left = { type: SeaCompiler.ELEMENT_TYPE.EXPR_BINOP, operator: operator, left: left, right: right };
+            }
+            return left;
+        }
+
+        function parseCmpExpr() {
+            let left = parseTermExpr();
+            while (peek('<') || peek('>') || peek('<=') || peek('>=')) {
+                const operator = consume().value;
+                const right = parseTermExpr();
+                left = { type: SeaCompiler.ELEMENT_TYPE.EXPR_BINOP, operator: operator, left: left, right: right };
+            }
+            return left;
+        }
+
+        function parseEqExpr() {
+            let left = parseCmpExpr();
+            while (peek('==') || peek('!=')) {
+                const operator = consume().value;
+                const right = parseCmpExpr();
+                left = { type: SeaCompiler.ELEMENT_TYPE.EXPR_BINOP, operator: operator, left: left, right: right };
+            }
+            return left;
+        }
+
+        function parseAssignExpr() {
+            if (peekType(SeaCompiler.TOKEN_TYPE.IDENT) && peek('=', 1)) {
+                let name = parseIdent();
+                expect('=');
+                let value = parseEqExpr();
+                if (!ast.hasVar(name.value)) {
+                    return error(`symbol '${name.value}' is not defined`, name);
+                }
+                if (ast.globals[name.value]) {
+                    return { type: SeaCompiler.ELEMENT_TYPE.EXPR_ASSIGN_GLOBAL, name, value };
+                } else {
+                    let slot = ast.scope.getSlot(name.value);
+                    return { type: SeaCompiler.ELEMENT_TYPE.EXPR_ASSIGN, slot, name, value };
+                }
+            } else {
+                return parseEqExpr();
+            }
+        }
+
+        function parseType() {
+            if (peekType(SeaCompiler.TOKEN_TYPE.TYPE)) {
+                return consume();
+            } else {
+                return error(`Expected 'int' or 'void'`);
+            }
+        }
+
+        function parseIdent() {
+            if (peekType(SeaCompiler.TOKEN_TYPE.IDENT)) {
+                let ident = currentToken;
+                consume();
+                return ident;
+            } else {
+                return error(`Expected identifier`);
+            }
+        }
+
+        function parseExpr() {
+            return parseAssignExpr();
+        }
+
+        function parseBlock() {
+            expect('{');
+
+            let statements = [];
+            while (more() && !peek('}')) {
+                statements.push(parseStmt());
+            }
+
+            expect('}');
+            return { type: SeaCompiler.ELEMENT_TYPE.BLOCK, statements };
+        }
+
+        function parseVarStmt() {
+            const type = parseType();
+            let items = [];
+            do {
+                const name = parseIdent();
+                let value;
+                if (take('=')) value = parseExpr();
+
+                if (ast.isDefined(name.value)) {
+                    error(`symbol '${name.value}' already defined`, name);
+                }
+                let slot = ast.scope.define(name, type.value);
+                items.push({ name, value, slot });
+            } while (take(','));
+            expect(';');
+            return { type: SeaCompiler.ELEMENT_TYPE.STMT_VAR, varType: type, items };
+        }
+
+        function parseReturnStmt() {
+            expect('return');
+            let value;
+            if (!peek(';')) {
+                value = parseExpr();
+            }
+            expect(';');
+            return { type: SeaCompiler.ELEMENT_TYPE.STMT_RETURN, value: value };
+        }
+
+        function parseIfStmt() {
+            let token = expect('if');
+            expect('(');
+            let condition = parseExpr();
+            expect(')');
+
+            let stmt = {
+                type: SeaCompiler.ELEMENT_TYPE.STMT_IF,
+                token,
+                condition,
+            };
+
+            ast.scope.push();
+            if (peek('{')) {
+                stmt.body = parseBlock();
+            } else {
+                stmt.body = parseStmt();
+            }
+            ast.scope.pop();
+
+            while (peek('else')) {
+                let token = consume();
+                if (take('if')) {
+                    expect('(');
+                    let condition = parseExpr();
+                    expect(')');
+
+                    let elseIf = {
+                        type: SeaCompiler.ELEMENT_TYPE.STMT_IF,
+                        token,
+                        condition,
+                    }
+
+                    ast.scope.push();
+                    if (peek('{')) {
+                        elseIf.body = parseBlock();
+                    } else {
+                        elseIf.body = parseStmt();
+                    }
+                    ast.scope.pop();
+
+                    stmt.elseBranch = elseIf;
+                } else {
+                    ast.scope.push();
+                    if (peek('{')) {
+                        stmt.elseBranch = parseBlock();
+                    } else {
+                        stmt.elseBranch = parseStmt();
+                    }
+                    ast.scope.pop();
+                    break;
+                }
+            }
+
+            return stmt;
+        }
+
+        function parseForStmt() {
+            expect('for');
+            expect('(');
+
+            ast.scope.push();
+            let decl;
+            if (peekType(SeaCompiler.TOKEN_TYPE.TYPE)) decl = parseVarStmt();
+            else {
+                if (!peek(';')) decl = parseExpr();
+                expect(';');
+            }
+
+            let condition;
+            if (!peek(';')) condition = parseExpr();
+            expect(';');
+
+            let incr;
+            if (!peek(')')) incr = parseExpr();
+            expect(')');
+
+            let body;
+            if (peek('{')) {
+                body = parseBlock();
+            } else {
+                body = parseExpr();
+                expect(';');
+            }
+            ast.scope.pop();
+
+            return {
+                type: SeaCompiler.ELEMENT_TYPE.STMT_FOR,
+                decl,
+                condition,
+                incr,
+                body,
+            };
+        }
+
+        function parseWhileStmt() {
+            let token = expect('while');
+            expect('(');
+            let condition = parseExpr();
+            expect(')');
+            let body;
+            if (peek('{')) {
+                body = parseBlock();
+            } else {
+                body = parseExpr();
+                expect(';');
+            }
+            return {
+                type: SeaCompiler.ELEMENT_TYPE.STMT_WHILE,
+                token,
+                condition,
+                body,
+            }
+        }
+
+        function parseStmt() {
+            let stmt;
+            if (SeaCompiler.TYPES.includes(currentToken.value)) {
+                stmt = parseVarStmt();
+            } else if (peek('return')) {
+                stmt = parseReturnStmt();
+            } else if (peek('if')) {
+                stmt = parseIfStmt();
+            } else if (peek('for')) {
+                stmt = parseForStmt();
+            } else if (peek('while')) {
+                stmt = parseWhileStmt();
+            } else {
+                let expr = parseExpr();
+                stmt = {
+                    type: SeaCompiler.ELEMENT_TYPE.STMT_EXPR,
+                    expr,
+                };
+                expect(';');
+            }
+            return stmt;
+        }
+
+        parseProgram();
+        delete ast.scope; // scope will always be empty at this point, no point in keeping it around
+        return ast;
+    }
+
+    codeGen(ast) {
+        let code = new FirthCodeGenerator();
+        let overflow = 0;
+        let overflowValues = {};
+        let condCount = 0;
+        let loopCount = 0;
+
+        function codeGenForElement(element) {
+            function defFunction() {
+                code.labelNextInstruction(element.functionName.value);
+                for (const param of element.parameters) {
+                    code.add("LDI " + param.slot, param.name);
+                    code.add("FST", param.name);
+                }
+                codeGenForElement(element.body);
+            }
+            function block() {
+                for (const stmt of element.statements) {
+                    codeGenForElement(stmt);
+                }
+            }
+            function stmtVar() {
+                for (const { name, value, slot } of element.items) {
+                    if (value) {
+                        codeGenForElement(value);
+                        code.add("LDI " + slot, name);
+                        code.add("FST", name);
+                    }
+                }
+            }
+            function stmtReturn() {
+                if (element.value) codeGenForElement(element.value);
+                code.add("RET");
+            }
+            function stmtIf() {
+                let false_label = "COND_" + condCount;
+                let end_label = "END_" + condCount;
+                condCount++;
+
+                codeGenForElement(element.condition);
+                code.add("SPOP", element.token);
+                code.add("BRZ " + false_label, element.token);
+
+                codeGenForElement(element.body);
+                code.add("BRA " + end_label, element.token);
+
+                code.labelNextInstruction(false_label)
+                if (element.elseBranch) {
+                    codeGenForElement(element.elseBranch);
+                }
+                code.add("BRA " + end_label, element.elseBranch?.token || element.token);
+
+                code.labelNextInstruction(end_label);
+            }
+            function stmtFor() {
+                if (element.decl) codeGenForElement(element.decl);
+
+                let loopId = loopCount++;
+                let bodyLabel = "FOR_BODY_" + loopId;
+                let endLabel = "FOR_END_" + loopId;
+
+                code.labelNextInstruction(bodyLabel);
+                if (element.condition) {
+                    codeGenForElement(element.condition);
+                    code.add("SPOP", element.condition.token);
+                    code.add("BRZ " + endLabel, element.condition.token);
+                }
+
+                codeGenForElement(element.body);
+
+                if (element.incr) codeGenForElement(element.incr);
+                code.add("BRA " + bodyLabel, element.token);
+
+                code.labelNextInstruction(endLabel);
+            }
+            function stmtWhile() {
+                let loopId = loopCount++;
+                let bodyLabel = "WHILE_BODY_" + loopId;
+                let endLabel = "WHILE_END_" + loopId;
+
+                code.labelNextInstruction(bodyLabel);
+                codeGenForElement(element.condition);
+                code.add("SPOP", element.condition.token);
+                code.add("BRZ " + endLabel, element.condition.token);
+
+                codeGenForElement(element.body);
+                code.add("BRA " + bodyLabel, element.token);
+
+                code.labelNextInstruction(endLabel);
+            }
+            function stmtExpr() {
+                codeGenForElement(element.expr);
+                if (element.expr.type === SeaCompiler.ELEMENT_TYPE.EXPR_ASSIGN || element.expr.type === SeaCompiler.ELEMENT_TYPE.EXPR_ASSIGN_GLOBAL) {
+                    // no-op
+                } else if (element.expr.type === SeaCompiler.ELEMENT_TYPE.EXPR_INVOKE && ast.getFunc(element.expr.functionName.value).returnType === "int") {
+                    code.add("SDROP", element.expr.functionName);
+                } else {
+                    code.add("SDROP", element.expr.token);
+                }
+            }
+            function exprInt() {
+                if (0 <= element.value && element.value <= 99) {
+                    code.add("SPUSHI " + element.value, element.token);
+                } else {
+                    let overflowSlotLabel = "!_OVERFLOW_" + overflow++;
+                    overflowValues[overflowSlotLabel] = element.value;
+                    code.add("LDA " + overflowSlotLabel, element.token);
+                    code.add("SPUSH", element.token);
+                }
+            }
+            function exprIdent() {
+                code.add("LDI " + element.slot, element.token);
+                code.add("FLD", element.token);
+                code.add("SPUSH", element.token);
+            }
+            function exprGlobalIdent() {
+                code.add("LDA " + element.value, element.token);
+                code.add("SPUSH", element.token);
+            }
+            function exprInvoke() {
+                for (const arg of element.args) {
+                    codeGenForElement(arg);
+                }
+                if (element.functionName.value === "get") {
+                    code.add("INP", element.functionName);
+                    code.add("SPUSH")
+                } else if (element.functionName.value === "put") {
+                    code.add("SPOP", element.functionName);
+                    code.add("OUT", element.functionName);
+                } else {
+                    let func = ast.functions[element.functionName.value];
+                    code.add("SPUSHI " + func.maxLocals, element.functionName);
+                    code.add("CALL " + element.functionName.value, element.functionName);
+                }
+            }
+            function exprBinop() {
+                const OPS = {
+                    "*": ["SMUL"],
+                    "/": ["SDIV"],
+                    "+": ["SADD"],
+                    "-": ["SSUB"],
+                    "%": ["SREM"],
+                    "==": ["SEQ"],
+                    "!=": ["SEQ", "SNOT"],
+                    ">": ["SGT"],
+                    "<": ["SLT"],
+                    ">=": ["SLT", "SNOT"],
+                    "<=": ["SGT", "SNOT"],
+                };
+                let opAsm = OPS[element.operator];
+                codeGenForElement(element.left);
+                codeGenForElement(element.right);
+                for (const op of opAsm) {
+                    code.add(op, element.token);
+                }
+            }
+            function exprAssign() {
+                codeGenForElement(element.value);
+                code.add("LDI " + element.slot, element.name);
+                code.add("FST", element.name);
+            }
+            function exprAssignGlobal() {
+                codeGenForElement(element.value);
+                code.add("SPOP", element.name);
+                code.add("STA " + element.name.value, element.name);
+            }
+
+            switch (element.type) {
+                case SeaCompiler.ELEMENT_TYPE.DEF_EXTERN: return /* no-op */;
+                case SeaCompiler.ELEMENT_TYPE.DEF_FUNCTION: return defFunction();
+                case SeaCompiler.ELEMENT_TYPE.BLOCK: return block();
+                case SeaCompiler.ELEMENT_TYPE.STMT_VAR: return stmtVar();
+                case SeaCompiler.ELEMENT_TYPE.STMT_RETURN: return stmtReturn();
+                case SeaCompiler.ELEMENT_TYPE.STMT_IF: return stmtIf();
+                case SeaCompiler.ELEMENT_TYPE.STMT_FOR: return stmtFor();
+                case SeaCompiler.ELEMENT_TYPE.STMT_WHILE: return stmtWhile();
+                case SeaCompiler.ELEMENT_TYPE.STMT_EXPR: return stmtExpr();
+                case SeaCompiler.ELEMENT_TYPE.EXPR_INT: return exprInt();
+                case SeaCompiler.ELEMENT_TYPE.EXPR_IDENT: return exprIdent();
+                case SeaCompiler.ELEMENT_TYPE.EXPR_GLOBAL_IDENT: return exprGlobalIdent();
+                case SeaCompiler.ELEMENT_TYPE.EXPR_INVOKE: return exprInvoke();
+                case SeaCompiler.ELEMENT_TYPE.EXPR_BINOP: return exprBinop();
+                case SeaCompiler.ELEMENT_TYPE.EXPR_ASSIGN: return exprAssign();
+                case SeaCompiler.ELEMENT_TYPE.EXPR_ASSIGN_GLOBAL: return exprAssignGlobal();
+                default:
+                    console.error(element);
+                    throw new Error("Unknown element type: " + element.type);
+            }
+        }
+
+        let main = ast.functions["main"];
+        if (!main) {
+            ast.errors.push({
+                message: "No `main` function found",
+                token: this.tokens[0] || {line: 1, col: 1},
+            });
+            return code;
+        }
+        if (main.parameters.length !== 0) {
+            ast.errors.push({
+                message: "`main` function must have no parameters",
+                token: main.parameters[0].token,
+            });
+            return code;
+        }
+
+        for (const [name, val] of Object.entries(ast.globals)) {
+            if (val) {
+                codeGenForElement(val);
+                code.add("SPOP");
+                code.add("STA " + name, val.token);
+            }
+        }
+        codeGenForElement({
+            type: SeaCompiler.ELEMENT_TYPE.EXPR_INVOKE,
+            functionName: main.functionName,
+            args: [],
+        });
+        if (main.returnType.value === "int") {
+            codeGenForElement({
+                type: SeaCompiler.ELEMENT_TYPE.EXPR_INVOKE,
+                functionName: {type: SeaCompiler.ELEMENT_TYPE.EXPR_IDENT, value: "put"},
+                args: [],
+            })
+        }
+        code.add("HLT");
+
+        for (const func of Object.values(ast.functions)) {
+            codeGenForElement(func);
+        }
+        for (const [name, val] of Object.entries(ast.globals)) {
+            code.add(name + " DAT 0");
+        }
+
+        for (const [label, value] of Object.entries(overflowValues)) {
+            code.add(label + " DAT " + value);
+        }
+
+        return code;
+    }
+
+    compile(seaSource) {
+        this.tokens = this.tokenize(seaSource);
+        let ast = this.parse(this.tokens);
+
+        let codeGenResult = this.codeGen(ast);
+
+        let parseResult = {
+            parsedElements: ast,
+            sourceMap: codeGenResult.sourceMap,
+            assembly: codeGenResult.getAssembly(),
+            errors: ast.errors,
+            originalSource: seaSource,
+        }
+
+        return parseResult;
     }
 }

@@ -23,10 +23,16 @@
 ">
   <div class="grid">
     <div id="titleBox" class="box center" data-cols="1 5" data-rows="1">
-      <h1 class="allcaps">🙋 Little Man Stack Machine Emulator</h2>
+      <h1 class="allcaps">🙋 Little Man Stack Machine Emulator</h1>
     </div>
-    <div id="codeEditorBoxFirth" class="box" data-cols="1" data-rows="2">
-      <strong class="allcaps block titlebar">Firth</strong>
+
+    <div id="firthCodeEditor" class="box" data-cols="1" data-rows="2">
+      <strong class="allcaps block titlebar">
+        <select id="code-language" onchange="window.lmsm.setLanguage(event.target.value)">
+          <option value="firth">Firth</option>
+          <option value="sea">Sea</option>
+        </select>
+      </strong>
       <section class="tool-bar">
         <label>
           <input type="button" onclick="
@@ -35,9 +41,10 @@
           " value="Compile" />
         </label>
       </section>
-      <textarea id="codeEditorFirth"></textarea>
+      <textarea id="codeEditorInput"></textarea>
     </div>
-    <div id="codeEditorBox" class="box" data-cols="1" data-rows="3">
+
+    <div id="assemblyCodeEditor" class="box" data-cols="1" data-rows="3">
       <strong class="allcaps block titlebar">LMSM Assembly</strong>
       <section class="tool-bar">
         <label>

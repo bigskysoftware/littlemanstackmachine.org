@@ -1,12 +1,14 @@
 class LMSMUi {
+  static LANGUAGES = ['firth', 'sea']
 
   lmsm = null;
+  language = null;
 
   asmEditor = null;
   assemblySourceMap = null;
 
-  firthEditor = null;
-  firthSourceMap = null;
+  codeEditor = null;
+  codeEditorMap = null;
 
   speed = 500;
 
@@ -48,11 +50,12 @@ class LMSMUi {
   }
   constructor() {
     this.lmsm = this.makeLMSM();
+    this.language = document.querySelector("#code-language").value;
 
     CodeMirror.defineSimpleMode('lmsm-assembly', {
       start: [
         {
-          regex: /(?:CALL|DAT|ADD|SUB|STA|LDI|LDA|BRA|BRZ|BRP|NOOP|INP|OUT|SPUSH|SPOP|SDUP|SDROP|SSWAP|SADD|SSUB|SMUL|SDIV|SMAX|SMIN|JAL|RET|HLT)\b/,
+          regex: /(?:CALL|DAT|ADD|SUB|STA|LDI|LDA|BRA|BRZ|BRP|NOOP|INP|OUT|SPUSH|SPOP|SDUP|SDROP|SSWAP|SADD|SSUB|SMUL|SDIV|SMAX|SMIN|JAL|RET|HLT|SLT|SGT|SNOT|SEQ|FST|FLD)\b/,
           token: 'keyword'
         },
         {
@@ -97,15 +100,39 @@ class LMSMUi {
       ],
     });
 
-    this.firthEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorFirth'), {
+    CodeMirror.defineSimpleMode('sea', {
+      start: [
+        {
+          regex: /(?:extern|return|void|int|for|while|if|else|break|continue)\b/,
+          token: 'keyword'
+        },
+        {
+          regex: /==|!=|=|\+|-|\*|\/|<=|<|>=|>/,
+          token: 'operator'
+        },
+        {
+          regex: /\d\d/,
+          token: 'number',
+        }
+      ]
+    })
+
+    this.codeEditor = CodeMirror.fromTextArea(document.querySelector('#codeEditorInput'), {
       lineNumbers: true,
       tabSize: 2,
       lint: {
         getAnnotations: (x) => {
           let diagnostics = []
-          if (this.firthEditor) {
-            let compiler = new FirthCompiler();
-            let compileResult = compiler.compile(this.firthEditor.getValue());
+          if (this.codeEditor) {
+            let compiler;
+            if (this.language === 'firth') {
+                compiler = new FirthCompiler();
+            } else if (this.language === 'sea') {
+                compiler = new SeaCompiler();
+            } else {
+                alert("Unknown language: " + this.language)
+            }
+            let compileResult = compiler.compile(this.codeEditor.getValue());
             for (const error of compileResult.errors) {
               diagnostics.push({
                 from: {
@@ -125,8 +152,8 @@ class LMSMUi {
         }
       },
     });
-    this.firthEditor.setSize('100%', '25em');
-    this.firthEditor.setOption('mode', 'firth');
+    this.codeEditor.setSize('100%', '25em');
+    this.codeEditor.setOption('mode', this.language);
   }
 
   clearOutput() {
@@ -235,6 +262,20 @@ class LMSMUi {
       detail = "SMAX - The Stack Max Instruction.  This instruction will remove the top two values on the top of the value stack and replace them with the maximum of those values";
     } else if (935 === nextInstruction) {
       detail = "SMIN - The Stack Min Instruction.  This instruction will remove the top two values on the top of the value stack and replace them with the minimum of those values";
+    } else if (936 === nextInstruction) {
+      detail = "SREM - The Stack Remainder Instruction.  This instruction will remove the top two values from the stack and replace them with the remainder of the division of those values";
+    } else if (937 === nextInstruction) {
+      detail = "SEQ - The Stack Equal Instruction.  This instruction will remove the top two values from the stack and replace them with 1 if they are equal, and 0 otherwise";
+    } else if (939 === nextInstruction) {
+      detail = "SGT - The Stack Greater Than Instruction.  This instruction will remove the top two values from the stack and replace them with 1 if the first is greater than the second, and 0 otherwise";
+    } else if (938 === nextInstruction) {
+      detail = "SLT - The Stack Less Than Instruction.  This instruction will remove the top two values on the top of the value stack and replace them with 1 if the first is less than the second, 0 otherwise";
+    } else if (940 === nextInstruction) {
+      detail = "SNOT - The Stack Not Instruction.  This instruction will remove the top value on the top of the value stack and replace it with 1 if it is 0, 0 otherwise";
+    } else if (941 === nextInstruction) {
+      detail = "FST - The Stack Store Instruction.  This instruction will remove the top value of the value stack and store into the frame-slot in the accumulator";
+    } else if (942 === nextInstruction) {
+      detail = "FLD - The Stack Load Instruction.  This instruction will load the value in the memory slot in the accumulator into the accumulator";
     } else {
       detail = "Unknown instruction - The behavior of this machine instruction is undefined.";
     }
@@ -248,11 +289,26 @@ class LMSMUi {
     return this.lmsm.status;
   }
 
+  setLanguage(language) {
+    if (!LMSMUi.LANGUAGES.includes(language)) {
+      alert("Unknown language: " + language);
+    }
+    this.language = language;
+    this.codeEditor.setOption("mode", language);
+  }
+
   compile() {
     this.lmsm = this.makeLMSM();
-    const code = this.firthEditor.getValue();
+    const code = this.codeEditor.getValue();
 
-    let compiler = new FirthCompiler();
+    let compiler;
+    if (this.language === 'firth') {
+        compiler = new FirthCompiler();
+    } else if (this.language === 'sea') {
+        compiler = new SeaCompiler();
+    } else {
+        alert("Unknown language: " + this.language);
+    }
     let compileResult = compiler.compile(code);
     if (compileResult.errors.length > 0) {
       console.error("Compilation Errors:")
@@ -262,7 +318,7 @@ class LMSMUi {
       return;
     }
 
-    this.firthSourceMap = compileResult.sourceMap;
+    this.codeEditorMap = compileResult.sourceMap;
     this.asmEditor.setValue(compileResult.assembly);
 
     let assembler = new LMSMAssembler();
@@ -363,16 +419,16 @@ class LMSMUi {
     }
 
     if (this.lastActiveFirthLine != null) {
-      this.firthEditor.getDoc()
+      this.codeEditor.getDoc()
           .removeLineClass(this.lastActiveFirthLine, 'background', 'markCode');
     }
 
-    if (this.firthSourceMap != null && this.lastActiveAssemblyLine != null) {
-      let mappedValue = this.firthSourceMap[this.lastActiveAssemblyLine + 1];
+    if (this.codeEditorMap != null && this.lastActiveAssemblyLine != null) {
+      let mappedValue = this.codeEditorMap[this.lastActiveAssemblyLine + 1];
       if (mappedValue != null) {
         // editor is zero-based
         this.lastActiveFirthLine = mappedValue - 1;
-        this.firthEditor.getDoc()
+        this.codeEditor.getDoc()
             .addLineClass(this.lastActiveFirthLine, 'background', 'markCode');
       } else {
         this.lastActiveFirthLine = null;
