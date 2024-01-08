@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://the.missing.style/">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Little Man Stack Machine</title>
+</head>
+<body>
+<main>
+    <h1 class="massivetext">&#x1F64B; The Little Man Stack Machine</h1>
+    <nav>
+        <p class="tool-bar">
+            <a href="index.html">Intro</a>
+            <a href="assembly.html">Assembly & Execution</a>
+            <a href="functions.html">Functions</a>
+            <a href="firth.html">Firth</a>
+            <a href="sea.html">Sea</a>
+            <a href="emulator.html">Emulator</a>
+            <a href="https://github.com/bigskysoftware/littlemanstackmachine.org">Github</a>
+        </p>
+    </nav>
+
+    <h1>Sea: A <em>Relatively</em> High-Level Functional Language</h1>
+
+    <p>
+        A design goal of the LMSM is to provide <em>just</em> enough infrastructure such that a small,
+        <a href="https://en.wikipedia.org/wiki/High-level_programming_language"> high-level programming language </a>
+        can be built for it relatively easily.  This page describes a language called "Sea" that is built on top of the
+        LMSM. Compared to a non-stack-based language like Firth, Sea is not as simple to implement in the LMSM.
+    </p>
+
+    <p>In today's world, it seems like 9 out of every 10 of languages that are widely used are based on the C programming language.</p>
+
+    <p>
+        The (second) programming language for the LMSM is called "Sea", which is, to an extent, based on the
+        <a href="https://en.wikipedia.org/wiki/C_(programming_language)">C</a> programming language. Similar to
+        C, Sea mainly uses a tree-like style of syntax. The stack is often hidden from the programmer, but expressions
+        are compiled down into stack-instructions.
+    </p>
+
+    <p>
+        It is recommended that a Sea compiler is provided with implementations of the LMSM, to show how a high-level
+        programming language can compile down to LMSM assembly.
+    </p>
+
+    <h2>An Example Sea Program: Squaring A Number</h2>
+
+    <p>
+        Before we delve into the details of Sea, let's look at an example program, based on the <code>SQUARE</code>
+        assembly program we looked at on the <a href="assembly.html">LMSM Assembly</a> page.  The Sea program
+        that would compile down to this assembly looks like this:
+    </p>
+
+    <pre>
+    extern int get();
+
+    int main() {
+        int x = get();
+        return square(x);
+    }
+
+    int square(int x) {
+        return x * x;
+    }
+    </pre>
+
+    <p>
+        The <code>extern int get();</code> line tells the Sea compiler that the <code>get</code> function is
+        an external function defined internally by the compiler (or externally from the code).
+    </p>
+
+    <p>
+        Like most simple C programs, Sea programs require a main function. The main function can return either
+        an int or void&mdash;the difference being that the returned int gets printed to the output console whereas void does not.
+    </p>
+
+    <p>
+        The first line in the main function <code>int x = get();</code> declares a variable named <code>x</code> and
+        gives it a value of <code>get()</code>.  The <code>get()</code> function is a built-in function that reads
+        a value from the input console.
+    </p>
+
+    <p>
+        The square function is defined in the same way as the main function, except that it takes an argument.
+        The <code>return x * x;</code> line returns the square of the argument.
+    </p>
+
+    <p>
+        Finally, the <code>return square(x);</code> line in the main function returns the square of the value
+        read from the input console. Since the main function returns an int, the squared value is printed to the
+        output console.
+    </p>
+
+    <p>
+        An alternative way to print the value would be to declare the <code>extern void put(int);</code> function
+        and then call <code>put(square(x));</code> instead of <code>return square(x);</code>.
+    </p>
+
+    <p>
+        So that's a quick introduction to the SAea programming language. Now let's look at all the elements of
+        the language in more detail.
+    </p>
+
+    <h2>Elements Of The Sea Programming Langauge</h2>
+
+    <p>
+        The Sea programming language consists of a set of <em>elements</em>.  Calling them "expressions" or "statements"
+        in the traditional sense of those terms is a little misleading since values are stored on a stack, so we will
+        stick with the term "element".
+    </p>
+
+    <h3>Basic Elements</h3>
+
+    <p>Sea supports the following "basic" elements:</p>
+
+    <table style="width: 100%">
+        <thead>
+        <tr>
+            <th>
+                Element
+            </th>
+            <th>
+                Example
+            </th>
+            <th>
+                Assembly
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                Integers
+            </td>
+            <td>
+                <code>3</code>
+            </td>
+            <td>
+                <code>LDI 3 SPUSH</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Addition
+            </td>
+            <td>
+                <code>2 + 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SADD</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Subtraction
+            </td>
+            <td>
+                <code>2 - 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SSUB</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Multiplication
+            </td>
+            <td>
+                <code>2 * 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SMUL</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Division
+            </td>
+            <td>
+                <code>2 / 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SDIV</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Comparison (LT)
+            </td>
+            <td>
+                <code>2 < 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SLT</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Comparison (LE)
+            </td>
+            <td>
+                <code>2 <= 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SGT SNOT</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Comparison (GT)
+            </td>
+            <td>
+                <code>2 > 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SGT</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Comparison (GE)
+            </td>
+            <td>
+                <code>2 >= 3</code>
+            </td>
+            <td>
+                <code>LDI 2 SPUSH LDI 3 SPUSH SLT SNOT</code>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h3>Statements Elements</h3>
+
+    <p>Sea supports the following statements to perform more high-level operations</p>
+
+    <table style="width: 100%">
+        <thead>
+        <tr>
+            <th>
+                Element
+            </th>
+            <th>
+                Example
+            </th>
+            <th>
+                Assembly
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                Return (void)
+            </td>
+            <td>
+                <code>return;</code>
+            </td>
+            <td>
+                <code>RET</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Return (int)
+            </td>
+            <td>
+                <code>return 1;</code>
+            </td>
+            <td>
+                <code>SPUSHI 1 RET</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Assignment
+            </td>
+            <td>
+                <code>x = 1;</code>
+            </td>
+            <td>
+                <code>SPUSHI 1 LDI 0 FST</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Function Call
+            </td>
+            <td>
+                <code>sum2(0, 0);</code>
+            </td>
+            <td>
+                <code>SPUSHI 0 SPUSHI 0 SPUSHI 2 CALL put</code>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h3>Variables</h3>
+
+    <p>
+        Variables are a weird concept in a non-stack based language. In Sea, variables can live in functions for a lifetime
+    smaller than that of the entire program. As a result, variables are stored in the header of the function.
+    </p>
+
+    <p>
+        What is a function header you ask? It is a span of contiguous memory near the return-address of the function. It
+        looks something like this:
+    </p>
+
+    <pre>| ...vars... | frame-size | post-return-instruction |</pre>
+    <p>
+        The frame-size is the number of bytes that the function header takes up. The post-return-instruction is the
+        instruction that is executed after the function returns. Arguments to a function are also stored here. The downside
+        to this approach is you have to know <em>exactly</em> how many variables you have at compile-time.
+    </p>
+
+    <p>
+        Let's consider the following function
+    </p>
+
+    <pre>
+    int squareSum(int n) {
+        int sum = 0;
+        for (int i = 0; i < n; i = i + 1) {
+            sum = sum + i * i;
+        }
+        return sum;
+    }
+    </pre>
+
+    <p>
+        This function has 1 argument, and two local variables. This means that the frame-size of its header will be 3.
+        The function header will look like this:
+    </p>
+
+    <pre>| i | sum | n | 3 | ... |</pre>
+
+    <h3>The For-Statement</h3>
+    <p>
+        The for-statement is a special statement that allows you to loop over a block of code a fixed number of times.
+        The for-statement has the following syntax:
+    </p>
+    <code>
+        for (int i = 0; i < 5; i = i + 1) { ...body }
+    </code>
+
+    <p>The for-statement really has four parts: a declaration, a continuation, an incrementation, and a body.  The first
+        three of these four parts are completely optional. An infinite loop can be formed like this: <code>for (;;) {}
+        </code></p>
+    <p></p>
+
+    <p>
+        The declaration can either be any expression or a variable declaration:
+        <code>
+            int var = 0;
+        </code>
+        or
+        <code>
+            var = 0;
+        </code>
+    </p>
+
+    <p>
+        The continuation can be any expression that evaluates to an integer value.
+        <code>i < 5;</code>
+    </p>
+
+    <p>
+        The incrementation can be any expression that evaluates to an integer value.
+        <code>i = i + 1;</code>
+    </p>
+
+    <p>
+        The body can be any block of code or a single statement.
+    </p>
+
+    <h3>The While Statement</h3>
+    <p>
+        The while-statement is a special statement that allows you to loop over a block of code until a condition is met.
+        The while-statement has the following syntax:
+    </p>
+    <code>
+        while (i < 5) { ...body }
+    </code>
+
+    <p>
+        The while-statement has two parts: a continuation, and a body. The continuation is required.
+        An infinite loop can be formed like this: <code>while (1) {}</code>
+    </p>
+
+    <p>
+        The continuation can be any expression that evaluates to an integer value.
+        <code>i < 5;</code>
+    </p>
+
+    <h3>The If-Else Statement</h3>
+
+    <p>
+        The if-else statement is a special statement that allows you to conditionally execute a block of code. The
+        if-else statement has the following syntax:
+    </p>
+
+    <code>
+        if (i < 5) { ...body } else { ...body }
+    </code>
+
+    <p>
+        The if-else statement has three parts: a continuation, a body, and an else-body. The continuation is required.
+        The else-body is optional. The else-body is executed if the continuation evaluates to false.
+    </p>
+
+    <p>
+        The continuation can be any expression that evaluates to an integer value.
+        <code>i < 5;</code>
+    </p>
+
+    <p>Both the if-body and the else-body can either be a block or a single statement</p>
+
+    <h3>I/O</h3>
+
+    <p>Sea supports the following elements for IO:</p>
+
+    <table style="width: 100%">
+        <thead>
+        <tr>
+            <th>
+                Element
+            </th>
+            <th>
+                Example
+            </th>
+            <th>
+                Assembly
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                Get
+            </td>
+            <td>
+                <code>get(); <em>FROM</em> extern int get();</code>
+            </td>
+            <td>
+                <code>INP SPUSH</code>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Print
+            </td>
+            <td>
+                <code>put(1); <em>FROM</em> extern void put(int);</code>
+            </td>
+            <td>
+                <code>LDI 1 OUT</code>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+
+    <h3>Global Variables</h3>
+
+    <p>
+        Sea supports global variables.  They can be declared like any other variable in Sea, but must be declared
+        outside of a function.
+    </p>
+
+    <code>
+        int x;
+    </code>
+
+    <p>Variables can be declared at the top-level in Sea programs, and are global. They cannot be declared within functions,
+        loops or conditionals. Variables cannot be used before they are declared</p>
+
+    <h3>Functions</h3>
+
+    <p>
+        Functions can be declared using the traditional C syntax. A return type followed by a function name followed by
+        an parameter list. The parameter list is a comma separated list of types and names.  The function body is
+        enclosed in curly braces.
+    </p>
+
+    <pre>
+    int square(int n) {
+        return n * n;
+    }
+    </pre>
+
+    <p>
+        Functions can return to a caller by using the <code>return</code> element. The return element is required to
+        have a value on the stack. The value on the stack will be returned to the caller.
+    </p>
+
+    <p>
+        Note that functions in Sea can call themselves recursively.
+    </p>
+
+    <h2>Fibbonacci.sea</h2>
+
+    <p>
+        Below is a recursive implementation of the <a href="https://en.wikipedia.org/wiki/Fibonacci_number">fibonacci</a>
+        algorithm in Sea:
+    </p>
+
+    <pre>
+extern int get();
+extern void put(int);
+
+int main() {
+  int in, num;
+  in = get();
+  num = fib(in);
+  put(num);
+  return in;
+}
+
+int fib(int n) {
+  if (n < 2) return 1;
+  return fib(n - 1) + fib(n - 2);
+}
+    </pre>
+    <h2>Fibbonacci_Iter.sea</h2>
+
+    <p>
+        Below is an iterative implementation of the <a href="https://en.wikipedia.org/wiki/Fibonacci_number">fibonacci</a>
+        algorithm in Sea:
+    </p>
+
+     <pre>
+extern int get();
+extern void put(int);
+
+int main() {
+    int in = get();
+
+    int num = 1;
+    for (int a = 1; in > 1; in = in - 1) {
+        int tmp = a;
+        a = num;
+        num = tmp + num;
+    }
+    put(num);
+
+    return 0;
+}
+     </pre>
+
+</main>
+<footer>
+</footer>
+</body>
+</html>
