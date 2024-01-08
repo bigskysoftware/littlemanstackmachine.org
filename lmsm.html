@@ -6,7 +6,8 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LMSM Emulator</title>
-  <link rel="stylesheet" href="https://the.missing.style/v1.0.8/missing.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/missing.css@1.1.1">
+  <link rel="stylesheet" href="https://unpkg.com/missing.css@1.1.1/prism">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="lmsm.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.11/codemirror.min.js" integrity="sha512-rdFIN28+neM8H8zNsjRClhJb1fIYby2YCNmoqwnqBDEvZgpcp7MJiX8Wd+Oi6KcJOMOuvGztjrsI59rly9BsVQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
@@ -194,7 +195,7 @@
                   <td class="memorySlot">
                     <label>
                       <input size="3" type="text" :class="cellClass()" x-model="lmsm.memory[mempos]" x-data="{
-                        mempos: ((i-1) * 10) + (j - 1), 
+                        mempos: ((i-1) * 10) + (j - 1),
                         cellClass() {
                           if(this.lmsm.registers.program_counter == this.mempos)
                           return 'memory_slot program_counter'
